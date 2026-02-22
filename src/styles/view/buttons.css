@@ -1,0 +1,51 @@
+.lineage-view-button {
+    width: 34px !important;
+    height: 34px !important;
+    padding: 8px !important;
+    font-size: inherit;
+    color: var(--icon-color) !important;
+    background-color: var(--interactive-normal);
+    --icon-size: var(--icon-s);
+    --icon-stroke: var(--icon-s-stroke-width);
+    cursor: pointer;
+    border-radius: 0;
+    border: none;
+    box-shadow: none !important;
+
+    & svg {
+        opacity: 0.6;
+    }
+}
+
+.lineage-view-button:disabled {
+    cursor: not-allowed;
+}
+
+.lineage-view-button:hover {
+    background-color: var(--interactive-hover);
+}
+
+.lineage-view-button:disabled {
+    cursor: not-allowed;
+    color: var(--color-base-40) !important;
+}
+
+.lineage-view-button[data-active='true'] {
+    color: var(--icon-color-active) !important;
+}
+
+.lineage-view-button[data-active='true'] svg {
+    opacity: 1;
+}
+
+.buttons-group {
+    border-radius: var(--radius-s);
+    overflow: hidden;
+    box-shadow: var(--input-shadow);
+    display: flex;
+    background-color: var(--interactive-normal);
+}
+
+.buttons-group--vertical {
+    flex-direction: column;
+}

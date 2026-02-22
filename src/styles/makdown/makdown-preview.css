@@ -1,0 +1,44 @@
+.inactive-node,
+.active-sibling,
+.active-parent,
+.active-child {
+    & mark {
+        filter: grayscale(1);
+    }
+}
+.active-sibling,.active-parent,.inactive-node{
+    & .cm-comment{
+        color: var(--text-muted) !important;
+    }
+}
+
+.lineage-card p {
+    margin: 0;
+}
+
+.lineage-card {
+    --p-spacing: 0px;
+    & .callout {
+        mix-blend-mode: initial;
+    }
+    & button.copy-code-button {
+        display: none;
+    }
+    & .cm-blockid {
+        display: inline-block;
+        font-size: 12px;
+        vertical-align: text-top;
+        margin-top: -0.2em;
+        color: var(--text-muted);
+        opacity: 0.5;
+    }
+    & .is-unresolved {
+        color: var(--link-unresolved-color);
+        opacity: var(--link-unresolved-opacity);
+        filter: var(--link-unresolved-filter);
+    }
+    & ul,ol{
+        margin-block-start: 0;
+        margin-block-end: 0;
+    }
+}

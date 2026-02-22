@@ -1,0 +1,22 @@
+
+.lineage-inline-editor {
+    width: 100%;
+    height: auto;
+    min-height: 100px;
+    & .view-header,
+    & .inline-title,
+    & .embedded-backlinks,
+    & .cm-gutters {
+        display: none !important;
+    }
+    & .cm-editor .cm-scroller {
+        padding: 6px !important;
+        padding-bottom: 10px !important;
+        padding-left: 12px !important;
+    }
+    & .cm-contentContainer div {
+        padding-bottom: 0 !important;
+    }
+
+    --file-line-width: 100%;
+}
