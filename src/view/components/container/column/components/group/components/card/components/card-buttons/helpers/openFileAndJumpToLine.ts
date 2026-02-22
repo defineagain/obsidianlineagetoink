@@ -36,5 +36,5 @@ export const openFileAndJumpToLine = async (
     await leaf.openFile(file);
     const markdownView = leaf.view as MarkdownView;
     markdownView.editor.setCursor({ line, ch });
-    setViewType(plugin, file.path, 'lineage');
+    setViewType(plugin, file.path, 'lineage-to-ink');
 };

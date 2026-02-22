@@ -51,7 +51,7 @@ import { refreshActiveViewOfDocument } from 'src/stores/plugin/actions/refresh-a
 import { detectDocumentFormat } from 'src/lib/format-detection/detect-document-format';
 import { LineageDocumentFormat } from 'src/stores/settings/settings-type';
 
-export const LINEAGE_VIEW_TYPE = 'lineage';
+export const LINEAGE_VIEW_TYPE = 'lineage-to-ink';
 
 export type DocumentStore = Store<DocumentState, DocumentStoreAction>;
 export type ViewStore = Store<ViewState, ViewStoreAction, LineageDocument>;

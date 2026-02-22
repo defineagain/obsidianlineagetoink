@@ -118,7 +118,7 @@ export default class Lineage extends Plugin {
     private loadRibbonIcon() {
         this.addRibbonIcon(
             customIcons.cards.name,
-            'Toggle Lineage view',
+            'Toggle Lineage to Ink view',
             () => {
                 const file = getActiveFile(this);
                 if (file) toggleFileViewType(this, file, undefined);

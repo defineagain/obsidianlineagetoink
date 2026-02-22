@@ -35,6 +35,6 @@ export const createLineageDocumentsFromGingkoFiles = async (
             file.basename,
         );
         setDocumentFormat(plugin, createdFile.path, 'sections');
-        setViewType(plugin, createdFile.path, 'lineage');
+        setViewType(plugin, createdFile.path, 'lineage-to-ink');
     }
 };

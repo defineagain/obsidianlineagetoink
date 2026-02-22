@@ -13,6 +13,6 @@ export const openFileInLineage = async (
     newLeaf: 'split' | 'tab',
 ) => {
     const leaf = await openFile(plugin, file, newLeaf);
-    toggleObsidianViewType(plugin, leaf, 'lineage');
+    toggleObsidianViewType(plugin, leaf, 'lineage-to-ink');
     setDocumentFormat(plugin, file.path, type);
 };

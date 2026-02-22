@@ -23,7 +23,7 @@ export type ScrollingSettings = {
 
 export type LineageDocumentFormat = 'outline' | 'sections' | 'html-element';
 
-export type ViewType = 'lineage' | 'markdown';
+export type ViewType = 'lineage-to-ink' | 'markdown';
 export type DocumentPreferences = {
     documentFormat: LineageDocumentFormat;
     viewType: ViewType;

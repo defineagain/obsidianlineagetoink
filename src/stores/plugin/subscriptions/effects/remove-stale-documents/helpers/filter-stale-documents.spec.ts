@@ -10,7 +10,7 @@ type PartialSettings = Pick<Settings, 'documents'> & {
 };
 const sample: DocumentPreferences = {
     documentFormat: 'sections',
-    viewType: 'lineage',
+    viewType: 'lineage-to-ink',
     activeSection: null,
     pinnedSections: null,
     outline: null,

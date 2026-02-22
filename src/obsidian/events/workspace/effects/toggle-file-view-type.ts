@@ -19,7 +19,7 @@ export const toggleFileViewType = async (
     let fileLeaf = leaf || getLeafOfFile(plugin, file, currentViewType);
     if (!fileLeaf) fileLeaf = await openFile(plugin, file, 'tab');
 
-    const newViewType = currentViewType === 'markdown' ? 'lineage' : 'markdown';
+    const newViewType = currentViewType === 'markdown' ? 'lineage-to-ink' : 'markdown';
     toggleObsidianViewType(plugin, fileLeaf, newViewType);
     setViewType(plugin, file.path, newViewType);
 };
