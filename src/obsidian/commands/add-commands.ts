@@ -322,7 +322,7 @@ export const addCommands = (plugin: Lineage) => {
                     return false;
                 }
             },
-            id: slugify(command.name),
+            id: 'ink-' + slugify(command.name),
         });
     }
 };
