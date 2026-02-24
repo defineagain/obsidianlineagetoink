@@ -4,6 +4,11 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
 
+# Load GITHUB_TOKEN from .env if it exists
+if [ -f .env ]; then
+    export $(cat .env | xargs)
+fi
+
 echo "Building project binaries for 0.1.1..."
 npm run build
 
