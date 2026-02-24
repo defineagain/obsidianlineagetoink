@@ -23,12 +23,18 @@ export const translateLinks = (text: string): string => {
     });
 };
 
-function getHeaderName(text: string, fallback: string): string {
-    const match = text.match(/^#+\s+(.*)$/m);
-    if (match) {
-        return match[1].trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
-    }
-    return fallback;
+function getInkIdentifier(text: string, fallback: string): string {
+    // Look for first H1: # Title
+    const match = text.match(/^#\s+(.*)$/m);
+    const rawName = match ? match[1].trim() : text.trim().split('\n')[0].substring(0, 30).trim();
+    
+    // Slugify: lowercase, replace spaces with underscores, strip non-alphanumeric
+    let identifier = rawName
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '');
+        
+    return identifier || fallback;
 }
 
 export const astToInk = (nodes: TreeNode[], depth: number = 0): string => {
@@ -44,53 +50,63 @@ export const astToInk = (nodes: TreeNode[], depth: number = 0): string => {
     for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
         let content = translateLinks(node.content);
+        let prefix = "";
         
+        const trimmed = content.trim();
+        const hasManualMarker = trimmed.startsWith('*') || trimmed.startsWith('+') || trimmed.startsWith('-');
+        const hasExplicitDivert = content.includes('->');
+
         if (depth === 0) {
-            // Column 1 -> Knot
-            if (content.trim().startsWith('===')) {
+            // Column 1 -> ALWAYS a Knot
+            if (trimmed.startsWith('===')) {
                 result += `\n${content}\n`;
             } else {
-                const name = getHeaderName(content, `knot_${Date.now()}_${i}`);
+                const name = getInkIdentifier(content, `knot_${i}`);
                 result += `\n=== ${name} ===\n`;
                 result += `${content}\n`;
             }
         } else if (depth === 1) {
-            // Column 2 -> Stitch
-            if (content.trim().startsWith('=')) {
+            // Column 2 -> ALWAYS a Stitch
+            if (trimmed.startsWith('=')) {
                 result += `\n${content}\n`;
             } else {
-                const name = getHeaderName(content, `stitch_${Date.now()}_${i}`);
+                const name = getInkIdentifier(content, `stitch_${i}`);
                 result += `\n= ${name}\n`;
                 result += `${content}\n`;
             }
         } else {
             // Column 3+ -> Weave (Choices and Gathers)
-            let prefix = "";
-            const trimmed = content.trim();
-            const hasManualMarker = trimmed.startsWith('*') || trimmed.startsWith('+') || trimmed.startsWith('-');
-            
             if (isBranchingChoices && !hasManualMarker) {
-                // Explicitly marked sticky choice via a '+' sign
-                const isSticky = content.trim().startsWith('+');
+                // Determine if parent was explicitly marked sticky via a '+' sign
+                // (Note: This logic might need refinement depending on where sticky state is stored)
+                const isSticky = trimmed.startsWith('+');
                 const marker = isSticky ? '+' : '*';
-                if (isSticky) {
-                    content = content.trim().substring(1).trim();
-                }
                 prefix = marker.repeat(weaveLevel) + " ";
             } else if (i > 0 && !hasManualMarker) {
-                // If it's a sibling strictly below another node in the same column, it's a Gather
+                // Sibling strictly below another node -> Gather
                 prefix = "-".repeat(weaveLevel) + " ";
             }
-            
-            result += `${prefix}${content}\n`;
         }
         
-        if (node.children && node.children.length > 0) {
+        // Choice Terminal Protection: 
+        // If this is a choice (*) or sticky choice (+) and has no children, 
+        // it MUST end in a divert or it will hang in Ink.
+        const isChoice = hasManualMarker && (trimmed.startsWith('*') || trimmed.startsWith('+'));
+        const hasChildren = node.children && node.children.length > 0;
+        
+        let suffix = "";
+        if (isChoice && !hasChildren && !hasExplicitDivert) {
+            suffix = " -> END";
+        }
+
+        result += `${prefix}${content.trim()}${suffix}\n`;
+        
+        if (hasChildren) {
             // Automation: If this is a Knot (depth 0) or Stitch (depth 1) and has children,
             // and it doesn't already have a divert (->), add one to the first child
-            if (depth < 2 && !content.includes('->')) {
+            if (depth < 2 && !hasExplicitDivert) {
                 const firstChild = node.children[0];
-                const firstChildName = getHeaderName(firstChild.content, `child_${Date.now()}`);
+                const firstChildName = getInkIdentifier(firstChild.content, `child_${i}`);
                 result += `-> ${firstChildName}\n`;
             }
             result += astToInk(node.children, depth + 1);

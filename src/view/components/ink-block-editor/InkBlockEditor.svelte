@@ -6,6 +6,7 @@
     import { slugify } from 'src/helpers/slugify';
     import { Info } from 'lucide-svelte';
     import { slide } from 'svelte/transition';
+    import { TopologyRulesModal } from '../../modals/topology-rules-modal/topology-rules-modal';
 
     export let plugin: Lineage;
     export let view: any;
@@ -147,6 +148,20 @@
             desc: 'A jump or link. Use this to move the story flow from one card/branch to another specific Knot or Stitch.',
         },
     };
+
+    const showTopologyRules = async () => {
+        const rulesPath =
+            '.gemini/antigravity/brain/740d1323-d8e5-49e6-a199-c89601f6910c/ink_topology_rules.md';
+        const rulesFile = plugin.app.vault.getAbstractFileByPath(rulesPath);
+        let rulesMarkdown = '';
+        if (rulesFile && 'read' in rulesFile) {
+            rulesMarkdown = await plugin.app.vault.read(rulesFile as any);
+        } else {
+            // Fallback if the file isn't in the vault (e.g. during dev or if brain dir is hidden)
+            rulesMarkdown = `# Ink-Lineage Authoring Rules\n\n(Rules file not found at ${rulesPath})`;
+        }
+        new TopologyRulesModal(plugin.app, rulesMarkdown).open();
+    };
 </script>
 
 <div class="lineage-ink-block-editor">
@@ -261,6 +276,15 @@
             <div class="group-label">Card Content Preview</div>
             <pre class="content-preview">{nodeContent || '(Empty)'}</pre>
         </div>
+
+        <div class="footer-actions">
+            <button
+                class="mod-ghost"
+                on:mousedown|preventDefault={showTopologyRules}
+            >
+                See Topology Rules
+            </button>
+        </div>
     {:else}
         <div class="empty-state">
             <p>Select a card in a Lineage view to assign Ink blocks.</p>
@@ -363,6 +387,19 @@
         margin-top: 1rem;
         padding-top: 1rem;
         border-top: 1px solid var(--background-modifier-border);
+    }
+
+    .footer-actions {
+        margin-top: auto;
+        padding-top: 1rem;
+        display: flex;
+        justify-content: center;
+        border-top: 1px solid var(--background-modifier-border);
+    }
+
+    .footer-actions button {
+        font-size: 0.8em;
+        color: var(--text-muted);
     }
 
     .content-preview {
