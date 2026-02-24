@@ -1,15 +1,21 @@
-#!/bin/bash
-
 # Ensure we are in the correct directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
+
+# Extract version from manifest.json
+VERSION=$(grep '"version"' manifest.json | head -1 | sed -E 's/.*"version": "(.*)".*/\1/')
+
+if [ -z "$VERSION" ]; then
+    echo "❌ Error: Could not extract version from manifest.json"
+    exit 1
+fi
 
 # Load GITHUB_TOKEN from .env if it exists
 if [ -f .env ]; then
     export $(cat .env | xargs)
 fi
 
-echo "Building project binaries for 0.4.1..."
+echo "Building project binaries for $VERSION..."
 npm run build
 
 if [ $? -ne 0 ]; then
@@ -19,28 +25,36 @@ fi
 
 echo "Extracting artifacts..."
 cp temp/vault/.obsidian/plugins/lineage-dev/main.js main.js
-cp temp/vault/.obsidian/plugins/lineage-dev/styles.css styles.css
+# Ink-Lineage 0.4.x uses Svelte 4 with injected CSS, styles.css might be empty or missing
+if [ -f temp/vault/.obsidian/plugins/lineage-dev/styles.css ]; then
+    cp temp/vault/.obsidian/plugins/lineage-dev/styles.css styles.css
+fi
 
-echo "Creating GitHub Release 0.4.1..."
+echo "Creating GitHub Release $VERSION..."
 if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-# We use single quotes for the notes to prevent shell expansion of backticks
-NOTES="### Complex Ink Workflow Support
-- **Global Logic Editor**: New sidebar tab (Scroll icon) to manage variables and functions in frontmatter.
-- **Knot/Stitch Headers**: Editable structural headers on cards for better visual organization.
-- **Enhanced Structural Sync**: Changes to titles and structural elements now trigger a 'Radical Reset' to ensure file integrity.
-- **Improved Ink Parsing**: Better handling of complex Ink logic blocks."
+NOTES="### Beat Aggregation & Narrative Alignment
+- **Beat Aggregation**: Narrative lines are now grouped into logical cards during import/export.
+- **Sibling Gathers**: Corrected weaver hierarchy to prevent 'staircase effect' and ensure re-convergence.
+- **Story-Logic Sync**: Fixed global variable/function preservation in frontmatter.
+- **Choice Protection**: Automatic \`-> END\` for choice nodes without children."
 
-gh release create 0.4.1 main.js manifest.json styles.css \
-    --title "0.4.1 - Complex Ink Workflow Support" \
+# Determine which files to include based on existence
+FILES="main.js manifest.json"
+if [ -f styles.css ]; then
+    FILES="$FILES styles.css"
+fi
+
+gh release create "$VERSION" $FILES \
+    --title "$VERSION - Beat Aggregation Alignment" \
     --notes "$NOTES"
 
 if [ $? -eq 0 ]; then
-    echo "✅ Release 0.4.1 published successfully!"
+    echo "✅ Release $VERSION published successfully!"
     echo "Cleaning up local build copies..."
-    rm main.js styles.css
+    rm -f main.js styles.css
 else
     echo "❌ Failed to create release. Please check your GitHub token permissions."
 fi
