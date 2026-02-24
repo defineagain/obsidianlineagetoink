@@ -10,7 +10,7 @@
 
     let activeView: LineageView | null = null;
     let activeNodeId: string | null = null;
-    let nodeContent: string = "";
+    let nodeContent: string = '';
 
     const unsubscribeViewStore = () => {
         if (viewStoreUnsubscribe) {
@@ -22,23 +22,28 @@
     let viewStoreUnsubscribe: (() => void) | null = null;
 
     const updateActiveView = () => {
-        const view = getActiveLineageView(plugin);
+        const view = getActiveLineageView(plugin) || plugin.lastActiveView;
         if (view !== activeView) {
             unsubscribeViewStore();
             activeView = view;
             if (activeView) {
-                viewStoreUnsubscribe = activeView.viewStore.subscribe((state) => {
-                    activeNodeId = state.document.activeNode;
-                    if (activeNodeId) {
-                        const docState = activeView!.documentStore.getValue();
-                        nodeContent = docState.document.content[activeNodeId]?.content || "";
-                    } else {
-                        nodeContent = "";
-                    }
-                });
+                viewStoreUnsubscribe = activeView.viewStore.subscribe(
+                    (state) => {
+                        activeNodeId = state.document.activeNode;
+                        if (activeNodeId) {
+                            const docState =
+                                activeView!.documentStore.getValue();
+                            nodeContent =
+                                docState.document.content[activeNodeId]
+                                    ?.content || '';
+                        } else {
+                            nodeContent = '';
+                        }
+                    },
+                );
             } else {
                 activeNodeId = null;
-                nodeContent = "";
+                nodeContent = '';
             }
         }
     };
@@ -59,9 +64,9 @@
             type: 'document/update-node-content',
             payload: {
                 nodeId: activeNodeId,
-                content: newContent
+                content: newContent,
             },
-            context: { isInSidebar: true }
+            context: { isInSidebar: true },
         });
     }
 
@@ -77,7 +82,7 @@
         if (!nodeContent) return;
         const trimmed = nodeContent.trim();
         if (trimmed.startsWith('===')) return; // Already a knot
-        
+
         const lines = nodeContent.split('\n');
         const firstLine = lines[0].trim() || 'knot';
         const name = slugify(firstLine);
@@ -89,42 +94,72 @@
         const trimmed = nodeContent.trim();
         if (trimmed.startsWith('=')) return; // Already a stitch
         if (trimmed.startsWith('===')) return; // Knot is higher level
-        
+
         const lines = nodeContent.split('\n');
         const firstLine = lines[0].trim() || 'stitch';
         const name = slugify(firstLine);
         updateContent(`= ${name}\n${nodeContent}`);
     }
-    
-    function applyGather() { applyPrefix('-'); }
-    function applyChoice() { applyPrefix('*'); }
-    function applyStickyChoice() { applyPrefix('+'); }
-    function applyDivert() { applyPrefix('->'); }
+
+    function applyGather() {
+        applyPrefix('-');
+    }
+    function applyChoice() {
+        applyPrefix('*');
+    }
+    function applyStickyChoice() {
+        applyPrefix('+');
+    }
+    function applyDivert() {
+        applyPrefix('->');
+    }
 </script>
 
 <div class="lineage-ink-block-editor">
     {#if activeNodeId}
         <h4>Ink Block Editor</h4>
-        <div class="editor-subtitle">Editing card for: {activeView?.getDisplayText() || 'Unknown'}</div>
+        <div class="editor-subtitle">
+            Editing card for: {activeView?.getDisplayText() || 'Unknown'}
+        </div>
 
         <div class="block-group">
             <div class="group-label">Topologies</div>
             <div class="button-grid">
-                <button class="mod-cta" on:click={applyKnot} aria-label="Convert to Knot">Knot (===)</button>
-                <button class="mod-cta" on:click={applyStitch} aria-label="Convert to Stitch">Stitch (=)</button>
+                <button
+                    class="mod-cta"
+                    on:mousedown|preventDefault={applyKnot}
+                    aria-label="Convert to Knot">Knot (===)</button
+                >
+                <button
+                    class="mod-cta"
+                    on:mousedown|preventDefault={applyStitch}
+                    aria-label="Convert to Stitch">Stitch (=)</button
+                >
             </div>
         </div>
 
         <div class="block-group">
             <div class="group-label">Weave & Flow</div>
             <div class="button-grid">
-                <button on:click={applyChoice} aria-label="Single-use Choice">Choice (*)</button>
-                <button on:click={applyStickyChoice} aria-label="Sticky Choice">Sticky (+)</button>
-                <button on:click={applyGather} aria-label="Gather point">Gather (-)</button>
-                <button on:click={applyDivert} aria-label="Divert to knot">Divert (->)</button>
+                <button
+                    on:mousedown|preventDefault={applyChoice}
+                    aria-label="Single-use Choice">Choice (*)</button
+                >
+                <button
+                    on:mousedown|preventDefault={applyStickyChoice}
+                    aria-label="Sticky Choice">Sticky (+)</button
+                >
+                <button
+                    on:mousedown|preventDefault={applyGather}
+                    aria-label="Gather point">Gather (-)</button
+                >
+                <button
+                    on:mousedown|preventDefault={applyDivert}
+                    aria-label="Divert to knot">Divert (->)</button
+                >
             </div>
         </div>
-        
+
         <div class="preview-area">
             <div class="group-label">Card Content Preview</div>
             <pre class="content-preview">{nodeContent || '(Empty)'}</pre>

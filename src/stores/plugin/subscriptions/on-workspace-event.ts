@@ -8,6 +8,7 @@ export const onWorkspaceEvent = (plugin: Lineage) => {
         (leaf) => {
             const view = leaf?.view;
             if (view instanceof LineageView && view.file?.path) {
+                plugin.lastActiveView = view;
                 view.plugin.store.dispatch({
                     type: 'plugin/documents/update-active-view-of-document',
                     payload: {

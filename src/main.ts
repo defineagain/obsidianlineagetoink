@@ -48,6 +48,7 @@ export default class Lineage extends Plugin {
     statusBar: StatusBar;
     private timeoutReferences: Set<ReturnType<typeof setTimeout>> = new Set();
     viewType: DocumentsPreferences = {};
+    lastActiveView: LineageView | null = null;
 
     async onload() {
         await this.loadSettings();
