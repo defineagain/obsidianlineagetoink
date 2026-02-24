@@ -7,6 +7,10 @@
     import { Info } from 'lucide-svelte';
     import { slide } from 'svelte/transition';
     import { TopologyRulesModal } from '../../modals/topology-rules-modal/topology-rules-modal';
+    import {
+        validateNodeTopology,
+        type ValidationResult,
+    } from 'src/lib/ink-exporter/topology-validator';
 
     export let plugin: Lineage;
     export let view: any;
@@ -150,8 +154,7 @@
     };
 
     const showTopologyRules = async () => {
-        const rulesPath =
-            '.gemini/antigravity/brain/740d1323-d8e5-49e6-a199-c89601f6910c/ink_topology_rules.md';
+        const rulesPath = 'Storyflow/Ink Topology Rules.md';
         const rulesFile = plugin.app.vault.getAbstractFileByPath(rulesPath);
         let rulesMarkdown = '';
         if (rulesFile && 'read' in rulesFile) {
@@ -162,6 +165,20 @@
         }
         new TopologyRulesModal(plugin.app, rulesMarkdown).open();
     };
+
+    let validationResult: ValidationResult | null = null;
+    const runValidation = () => {
+        if (!activeView || !activeNodeId) return;
+        const state = activeView.documentStore.getValue();
+        const depth = state.document.columns.findIndex((c) =>
+            c.groups.some((g) => g.nodes.includes(activeNodeId!)),
+        );
+        validationResult = validateNodeTopology(nodeContent, depth);
+    };
+
+    $: if (nodeContent) {
+        validationResult = null;
+    }
 </script>
 
 <div class="lineage-ink-block-editor">
@@ -273,16 +290,41 @@
         {/if}
 
         <div class="preview-area">
-            <div class="group-label">Card Content Preview</div>
-            <pre class="content-preview">{nodeContent || '(Empty)'}</pre>
+            <div class="group-label">Card Content Editor</div>
+            <textarea
+                class="content-editor"
+                bind:value={nodeContent}
+                on:input={() => updateContent(nodeContent)}
+                placeholder="Type Ink content here..."
+            ></textarea>
         </div>
 
+        {#if validationResult}
+            <div
+                class="validation-panel"
+                class:val-success={validationResult.type === 'success'}
+                class:val-warning={validationResult.type === 'warning'}
+                class:val-error={validationResult.type === 'error'}
+                transition:slide
+            >
+                <div class="val-header">
+                    <strong
+                        >Topology Check: {validationResult.type.toUpperCase()}</strong
+                    >
+                </div>
+                <div class="val-message">{validationResult.message}</div>
+            </div>
+        {/if}
+
         <div class="footer-actions">
+            <button class="mod-cta" on:mousedown|preventDefault={runValidation}>
+                Parse & Check
+            </button>
             <button
                 class="mod-ghost"
                 on:mousedown|preventDefault={showTopologyRules}
             >
-                See Topology Rules
+                Topology Rules
             </button>
         </div>
     {:else}
@@ -402,16 +444,66 @@
         color: var(--text-muted);
     }
 
-    .content-preview {
+    .content-editor {
+        width: 100%;
+        min-height: 150px;
         font-family: var(--font-monospace);
-        font-size: 0.8em;
-        white-space: pre-wrap;
+        font-size: 0.85em;
         background: var(--background-secondary);
-        padding: 0.5rem;
+        border: 1px solid var(--background-modifier-border);
+        color: var(--text-normal);
+        padding: 0.75rem;
         border-radius: var(--radius-s);
-        max-height: 200px;
-        overflow-y: auto;
-        margin: 0.5rem 0;
+        resize: vertical;
+        margin-top: 0.5rem;
+    }
+
+    .content-editor:focus {
+        border-color: var(--color-accent);
+        outline: none;
+    }
+
+    .validation-panel {
+        padding: 0.75rem;
+        border-radius: var(--radius-s);
+        font-size: 0.85em;
+        border: 1px solid transparent;
+    }
+
+    .val-success {
+        background: rgba(var(--color-green-rgb), 0.1);
+        border-color: var(--color-green);
+        color: var(--color-green);
+    }
+
+    .val-warning {
+        background: rgba(var(--color-orange-rgb), 0.1);
+        border-color: var(--color-orange);
+        color: var(--color-orange);
+    }
+
+    .val-error {
+        background: rgba(var(--color-red-rgb), 0.1);
+        border-color: var(--color-red);
+        color: var(--color-red);
+    }
+
+    .val-header {
+        margin-bottom: 0.25rem;
+    }
+
+    .footer-actions {
+        margin-top: auto;
+        padding-top: 1rem;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: stretch;
+        border-top: 1px solid var(--background-modifier-border);
+    }
+
+    .footer-actions button {
+        flex: 1;
+        font-size: 0.8em;
     }
 
     .empty-state {
