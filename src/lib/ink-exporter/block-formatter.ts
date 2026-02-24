@@ -3,32 +3,30 @@ import { slugify } from '../../helpers/slugify';
 export type BlockType = 'knot' | 'stitch' | 'choice' | 'sticky' | 'gather' | 'divert' | 'plain';
 
 export function reformatBlock(content: string, targetType: BlockType): string {
-    let body = content;
+    let lines = content.split('\n');
     
-    // Regular expressions for stripping ANY leading Ink markers
-    // knot: === name ===
-    // stitch: = name
-    // weave: * or + or -
-    // divert: ->
-    const markerRegexes = [
-        /^===\s*[^=]*?\s*===\s*/m,
-        /^=\s*[^=]*?\s*/m,
-        /^(\*|\+|-|->)\s*/m
-    ];
+    // Strict markers (must be at the start of the line)
+    const knotRegex = /^===\s*([^=]*?)\s*===\s*$/;
+    const stitchRegex = /^=\s*([^=]*?)\s*$/;
+    const weaveRegex = /^(\*|\+|-|->)\s*/;
 
-    // Detect and strip ALL existing primary markers from the start in a loop
-    let changed = true;
-    while (changed) {
-        changed = false;
-        for (const regex of markerRegexes) {
-            if (regex.test(body)) {
-                body = body.replace(regex, '');
-                changed = true;
-                break;
-            }
+    // We only strip from the TOP of the file.
+    // If we find multiple markers at the top, we keep stripping until we hit actual content.
+    while (lines.length > 0) {
+        const firstLine = lines[0].trim();
+        if(!firstLine) {
+            lines.shift();
+            continue;
         }
-        body = body.trimStart();
+
+        if (knotRegex.test(firstLine) || stitchRegex.test(firstLine) || weaveRegex.test(firstLine)) {
+            lines.shift();
+            continue;
+        }
+        break;
     }
+
+    let body = lines.join('\n').trimStart();
 
     // Now apply the target marker
     switch (targetType) {
