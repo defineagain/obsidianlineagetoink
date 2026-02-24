@@ -16,6 +16,8 @@
         reformatBlock,
         type BlockType,
     } from 'src/lib/ink-exporter/block-formatter';
+    import { TOPOLOGY_RULES_MD } from 'src/lib/ink-exporter/topology-rules-content';
+    import { MarkdownRenderer } from 'obsidian';
 
     export let plugin: Lineage;
     export let view: any;
@@ -120,18 +122,22 @@
         },
     };
 
-    const showTopologyRules = async () => {
-        const rulesPath = 'Storyflow/Ink Topology Rules.md';
-        const rulesFile = plugin.app.vault.getAbstractFileByPath(rulesPath);
-        let rulesMarkdown = '';
-        if (rulesFile && 'read' in rulesFile) {
-            rulesMarkdown = await plugin.app.vault.read(rulesFile as any);
-        } else {
-            // Fallback if the file isn't in the vault (e.g. during dev or if brain dir is hidden)
-            rulesMarkdown = `# Ink-Lineage Authoring Rules\n\n(Rules file not found at ${rulesPath})`;
-        }
-        new TopologyRulesModal(plugin.app, rulesMarkdown).open();
+    let showRules = false;
+    const toggleRules = () => {
+        showRules = !showRules;
     };
+
+    /** @type {HTMLElement} */
+    let rulesContainer: HTMLElement;
+    $: if (showRules && rulesContainer) {
+        rulesContainer.empty();
+        MarkdownRenderer.renderMarkdown(
+            TOPOLOGY_RULES_MD,
+            rulesContainer,
+            '',
+            null as any,
+        );
+    }
 
     let validationResult: ValidationResult | null = null;
     const runValidation = () => {
@@ -316,11 +322,20 @@
                 Make Child of...
             </button>
             <button
-                class="mod-ghost"
-                on:mousedown|preventDefault={showTopologyRules}
+                class="rule-toggle-btn"
+                class:is-active={showRules}
+                on:mousedown|preventDefault={toggleRules}
             >
-                Topology Rules
+                {showRules ? 'Hide Rules' : 'Topology Rules'}
             </button>
+
+            {#if showRules}
+                <div
+                    class="topology-rules-inline"
+                    bind:this={rulesContainer}
+                    transition:slide
+                ></div>
+            {/if}
         </div>
     {:else}
         <div class="empty-state">
@@ -477,18 +492,44 @@
     .footer-actions {
         margin-top: auto;
         padding-top: 1rem;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+        display: flex;
+        flex-direction: column;
         gap: 0.5rem;
         border-top: 1px solid var(--background-modifier-border);
     }
 
     .footer-actions button {
+        width: 100%;
         font-size: 0.8em;
     }
 
-    .footer-actions button.mod-ghost {
-        grid-column: span 2;
+    .rule-toggle-btn {
+        background: var(--background-secondary-alt);
+        color: var(--text-muted);
+    }
+
+    .rule-toggle-btn.is-active {
+        background: var(--color-accent);
+        color: white;
+    }
+
+    .topology-rules-inline {
+        max-height: 250px;
+        overflow-y: auto;
+        background: var(--background-primary);
+        border: 1px solid var(--background-modifier-border);
+        padding: 1rem;
+        border-radius: var(--radius-s);
+        font-size: 0.85em;
+        line-height: 1.5;
+    }
+
+    /* Target headers inside the rendered markdown */
+    .topology-rules-inline :global(h1),
+    .topology-rules-inline :global(h2) {
+        margin-top: 0;
+        font-size: 1.1em;
+        color: var(--text-normal);
     }
 
     .empty-state {
