@@ -66,29 +66,33 @@
     }
 
     function applyPrefix(prefix: string) {
-        let trimmed = nodeContent.trim();
-        // Remove existing prefixes if they match common ink markers to allow swapping
-        const markers = ['* ', '+ ', '- ', '-> '];
-        for (const m of markers) {
-            if (trimmed.startsWith(m)) {
-                trimmed = trimmed.substring(m.length).trim();
-                break;
-            }
-        }
+        let trimmed = nodeContent.trimStart();
+        // Remove existing markers if they match to allow swapping
+        const markerRegex = /^(\*|\+|\-|->)\s*/;
+        trimmed = trimmed.replace(markerRegex, '');
         updateContent(`${prefix} ${trimmed}`);
     }
 
     function applyKnot() {
         if (!nodeContent) return;
-        const firstLine = nodeContent.split('\n')[0].trim();
-        const name = slugify(firstLine) || 'knot';
+        const trimmed = nodeContent.trim();
+        if (trimmed.startsWith('===')) return; // Already a knot
+        
+        const lines = nodeContent.split('\n');
+        const firstLine = lines[0].trim() || 'knot';
+        const name = slugify(firstLine);
         updateContent(`=== ${name} ===\n${nodeContent}`);
     }
 
     function applyStitch() {
         if (!nodeContent) return;
-        const firstLine = nodeContent.split('\n')[0].trim();
-        const name = slugify(firstLine) || 'stitch';
+        const trimmed = nodeContent.trim();
+        if (trimmed.startsWith('=')) return; // Already a stitch
+        if (trimmed.startsWith('===')) return; // Knot is higher level
+        
+        const lines = nodeContent.split('\n');
+        const firstLine = lines[0].trim() || 'stitch';
+        const name = slugify(firstLine);
         updateContent(`= ${name}\n${nodeContent}`);
     }
     

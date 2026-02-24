@@ -47,19 +47,29 @@ export const astToInk = (nodes: TreeNode[], depth: number = 0): string => {
         
         if (depth === 0) {
             // Column 1 -> Knot
-            const name = getHeaderName(content, `knot_${Date.now()}_${i}`);
-            result += `\n=== ${name} ===\n`;
-            result += `${content}\n`;
+            if (content.trim().startsWith('===')) {
+                result += `\n${content}\n`;
+            } else {
+                const name = getHeaderName(content, `knot_${Date.now()}_${i}`);
+                result += `\n=== ${name} ===\n`;
+                result += `${content}\n`;
+            }
         } else if (depth === 1) {
             // Column 2 -> Stitch
-            const name = getHeaderName(content, `stitch_${Date.now()}_${i}`);
-            result += `\n= ${name}\n`;
-            result += `${content}\n`;
+            if (content.trim().startsWith('=')) {
+                result += `\n${content}\n`;
+            } else {
+                const name = getHeaderName(content, `stitch_${Date.now()}_${i}`);
+                result += `\n= ${name}\n`;
+                result += `${content}\n`;
+            }
         } else {
             // Column 3+ -> Weave (Choices and Gathers)
             let prefix = "";
+            const trimmed = content.trim();
+            const hasManualMarker = trimmed.startsWith('*') || trimmed.startsWith('+') || trimmed.startsWith('-');
             
-            if (isBranchingChoices) {
+            if (isBranchingChoices && !hasManualMarker) {
                 // Explicitly marked sticky choice via a '+' sign
                 const isSticky = content.trim().startsWith('+');
                 const marker = isSticky ? '+' : '*';
@@ -67,7 +77,7 @@ export const astToInk = (nodes: TreeNode[], depth: number = 0): string => {
                     content = content.trim().substring(1).trim();
                 }
                 prefix = marker.repeat(weaveLevel) + " ";
-            } else if (i > 0) {
+            } else if (i > 0 && !hasManualMarker) {
                 // If it's a sibling strictly below another node in the same column, it's a Gather
                 prefix = "-".repeat(weaveLevel) + " ";
             }

@@ -1,7 +1,7 @@
 export const slugify = (inputString: string) => {
     return inputString
         .toLowerCase() // Convert to lowercase
-        .replace(/[^a-z0-9]/g, '-') // Replace non-alphanumeric characters with hyphens
-        .replace(/-+/g, '-') // Replace consecutive hyphens with a single hyphen
-        .replace(/^-|-$/g, ''); // Remove leading and trailing hyphens
+        .replace(/[^a-z0-9]/g, '_') // Replace non-alphanumeric characters with underscores
+        .replace(/_+/g, '_') // Replace consecutive underscores with a single underscore
+        .replace(/^_+|_$/g, ''); // Remove leading and trailing underscores
 };
