@@ -6,7 +6,7 @@ It is a fork of the [Lineage](https://github.com/ycnmhd/obsidian-lineage) plugin
 
 ## Installation via BRAT
 
-This plugin is currently in Beta (**v0.3.5**) and must be installed via [Obsidian BRAT](https://github.com/TfTHacker/obsidian42-brat).
+This plugin is currently in Beta (**v0.3.6**) and must be installed via [Obsidian BRAT](https://github.com/TfTHacker/obsidian42-brat).
 
 1. Install the **BRAT** plugin from the Obsidian Community Plugins browser.
 2. Enable BRAT in your settings.

@@ -4,6 +4,8 @@
     import { LineageView } from 'src/view/view';
     import { getActiveLineageView } from 'src/obsidian/commands/helpers/get-active-lineage-view';
     import { slugify } from 'src/helpers/slugify';
+    import { Info } from 'lucide-svelte';
+    import { slide } from 'svelte/transition';
 
     export let plugin: Lineage;
     export let view: any;
@@ -113,52 +115,147 @@
     function applyDivert() {
         applyPrefix('->');
     }
+
+    let activeHelp: string | null = null;
+    function toggleHelp(key: string) {
+        activeHelp = activeHelp === key ? null : key;
+    }
+
+    const HELP_TEXT: Record<string, { title: string; desc: string }> = {
+        knot: {
+            title: 'Knot (===)',
+            desc: 'The largest unit of content in Ink. Think of it as a Chapter or a major Scene. Every card sequence should ideally start with a Knot.',
+        },
+        stitch: {
+            title: 'Stitch (=)',
+            desc: 'Sub-sections within a Knot. Use these to organize smaller branches or sequences inside a single scene.',
+        },
+        choice: {
+            title: 'Choice (*)',
+            desc: 'A standard branching path. Once selected by the player, it usually disappears from the list of options.',
+        },
+        sticky: {
+            title: 'Sticky Choice (+)',
+            desc: 'A choice that persists. It remains available even after the player has picked it once.',
+        },
+        gather: {
+            title: 'Gather (-)',
+            desc: 'Convergence points. Use these to bring multiple branching paths back together into a single flow.',
+        },
+        divert: {
+            title: 'Divert (->)',
+            desc: 'A jump or link. Use this to move the story flow from one card/branch to another specific Knot or Stitch.',
+        },
+    };
 </script>
 
 <div class="lineage-ink-block-editor">
     {#if activeNodeId}
-        <h4>Ink Block Editor</h4>
-        <div class="editor-subtitle">
-            Editing card for: {activeView?.getDisplayText() || 'Unknown'}
+        <div class="editor-header">
+            <h4>Ink Block Editor</h4>
+            <div class="editor-subtitle">
+                Editing card for: {activeView?.getDisplayText() || 'Unknown'}
+            </div>
         </div>
 
         <div class="block-group">
             <div class="group-label">Topologies</div>
             <div class="button-grid">
-                <button
-                    class="mod-cta"
-                    on:mousedown|preventDefault={applyKnot}
-                    aria-label="Convert to Knot">Knot (===)</button
-                >
-                <button
-                    class="mod-cta"
-                    on:mousedown|preventDefault={applyStitch}
-                    aria-label="Convert to Stitch">Stitch (=)</button
-                >
+                <div class="button-with-help">
+                    <button
+                        class="mod-cta"
+                        on:mousedown|preventDefault={applyKnot}
+                        aria-label="Convert to Knot">Knot</button
+                    >
+                    <button
+                        class="info-btn"
+                        class:is-active={activeHelp === 'knot'}
+                        on:mousedown|preventDefault={() => toggleHelp('knot')}
+                    >
+                        <Info size={14} />
+                    </button>
+                </div>
+                <div class="button-with-help">
+                    <button
+                        class="mod-cta"
+                        on:mousedown|preventDefault={applyStitch}
+                        aria-label="Convert to Stitch">Stitch</button
+                    >
+                    <button
+                        class="info-btn"
+                        class:is-active={activeHelp === 'stitch'}
+                        on:mousedown|preventDefault={() => toggleHelp('stitch')}
+                    >
+                        <Info size={14} />
+                    </button>
+                </div>
             </div>
         </div>
 
         <div class="block-group">
             <div class="group-label">Weave & Flow</div>
             <div class="button-grid">
-                <button
-                    on:mousedown|preventDefault={applyChoice}
-                    aria-label="Single-use Choice">Choice (*)</button
-                >
-                <button
-                    on:mousedown|preventDefault={applyStickyChoice}
-                    aria-label="Sticky Choice">Sticky (+)</button
-                >
-                <button
-                    on:mousedown|preventDefault={applyGather}
-                    aria-label="Gather point">Gather (-)</button
-                >
-                <button
-                    on:mousedown|preventDefault={applyDivert}
-                    aria-label="Divert to knot">Divert (->)</button
-                >
+                <div class="button-with-help">
+                    <button
+                        on:mousedown|preventDefault={applyChoice}
+                        aria-label="Single-use Choice">Choice</button
+                    >
+                    <button
+                        class="info-btn"
+                        class:is-active={activeHelp === 'choice'}
+                        on:mousedown|preventDefault={() => toggleHelp('choice')}
+                    >
+                        <Info size={14} />
+                    </button>
+                </div>
+                <div class="button-with-help">
+                    <button
+                        on:mousedown|preventDefault={applyStickyChoice}
+                        aria-label="Sticky Choice">Sticky</button
+                    >
+                    <button
+                        class="info-btn"
+                        class:is-active={activeHelp === 'sticky'}
+                        on:mousedown|preventDefault={() => toggleHelp('sticky')}
+                    >
+                        <Info size={14} />
+                    </button>
+                </div>
+                <div class="button-with-help">
+                    <button
+                        on:mousedown|preventDefault={applyGather}
+                        aria-label="Gather point">Gather</button
+                    >
+                    <button
+                        class="info-btn"
+                        class:is-active={activeHelp === 'gather'}
+                        on:mousedown|preventDefault={() => toggleHelp('gather')}
+                    >
+                        <Info size={14} />
+                    </button>
+                </div>
+                <div class="button-with-help">
+                    <button
+                        on:mousedown|preventDefault={applyDivert}
+                        aria-label="Divert to knot">Divert</button
+                    >
+                    <button
+                        class="info-btn"
+                        class:is-active={activeHelp === 'divert'}
+                        on:mousedown|preventDefault={() => toggleHelp('divert')}
+                    >
+                        <Info size={14} />
+                    </button>
+                </div>
             </div>
         </div>
+
+        {#if activeHelp}
+            <div class="help-panel" transition:slide={{ duration: 200 }}>
+                <div class="help-title">{HELP_TEXT[activeHelp].title}</div>
+                <div class="help-desc">{HELP_TEXT[activeHelp].desc}</div>
+            </div>
+        {/if}
 
         <div class="preview-area">
             <div class="group-label">Card Content Preview</div>
@@ -210,6 +307,56 @@
         font-size: 0.85em;
         justify-content: center;
         text-align: center;
+    }
+
+    .button-with-help {
+        display: flex;
+        gap: 2px;
+        align-items: stretch;
+    }
+
+    .info-btn {
+        background: var(--background-secondary);
+        border: 1px solid var(--background-modifier-border);
+        color: var(--text-faint);
+        padding: 0 4px;
+        border-radius: var(--radius-s);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .info-btn:hover {
+        color: var(--text-normal);
+        background: var(--background-modifier-hover);
+    }
+
+    .info-btn.is-active {
+        color: var(--color-accent);
+        border-color: var(--color-accent);
+        background: var(--background-primary);
+    }
+
+    .help-panel {
+        background: var(--background-secondary-alt);
+        border-left: 3px solid var(--color-accent);
+        padding: 0.75rem;
+        border-radius: var(--radius-s);
+        margin: 0.5rem 0;
+        font-size: 0.85em;
+    }
+
+    .help-title {
+        font-weight: bold;
+        color: var(--text-normal);
+        margin-bottom: 0.25rem;
+    }
+
+    .help-desc {
+        color: var(--text-muted);
+        line-height: 1.4;
     }
 
     .preview-area {
