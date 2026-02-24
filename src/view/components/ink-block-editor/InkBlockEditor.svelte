@@ -12,6 +12,10 @@
         type ValidationResult,
     } from 'src/lib/ink-exporter/topology-validator';
     import { SelectParentModal } from '../../modals/select-parent-modal/select-parent-modal';
+    import {
+        reformatBlock,
+        type BlockType,
+    } from 'src/lib/ink-exporter/block-formatter';
 
     export let plugin: Lineage;
     export let view: any;
@@ -78,48 +82,10 @@
         });
     }
 
-    function applyPrefix(prefix: string) {
-        let trimmed = nodeContent.trimStart();
-        // Remove existing markers if they match to allow swapping
-        const markerRegex = /^(\*|\+|\-|->)\s*/;
-        trimmed = trimmed.replace(markerRegex, '');
-        updateContent(`${prefix} ${trimmed}`);
-    }
-
-    function applyKnot() {
-        if (!nodeContent) return;
-        const trimmed = nodeContent.trim();
-        if (trimmed.startsWith('===')) return; // Already a knot
-
-        const lines = nodeContent.split('\n');
-        const firstLine = lines[0].trim() || 'knot';
-        const name = slugify(firstLine);
-        updateContent(`=== ${name} ===\n${nodeContent}`);
-    }
-
-    function applyStitch() {
-        if (!nodeContent) return;
-        const trimmed = nodeContent.trim();
-        if (trimmed.startsWith('=')) return; // Already a stitch
-        if (trimmed.startsWith('===')) return; // Knot is higher level
-
-        const lines = nodeContent.split('\n');
-        const firstLine = lines[0].trim() || 'stitch';
-        const name = slugify(firstLine);
-        updateContent(`= ${name}\n${nodeContent}`);
-    }
-
-    function applyGather() {
-        applyPrefix('-');
-    }
-    function applyChoice() {
-        applyPrefix('*');
-    }
-    function applyStickyChoice() {
-        applyPrefix('+');
-    }
-    function applyDivert() {
-        applyPrefix('->');
+    function applyFormatting(targetType: BlockType) {
+        if (!activeNodeId) return;
+        const newContent = reformatBlock(nodeContent, targetType);
+        updateContent(newContent);
     }
 
     let activeHelp: string | null = null;
@@ -216,7 +182,8 @@
                 <div class="button-with-help">
                     <button
                         class="mod-cta"
-                        on:mousedown|preventDefault={applyKnot}
+                        on:mousedown|preventDefault={() =>
+                            applyFormatting('knot')}
                         aria-label="Convert to Knot">Knot</button
                     >
                     <button
@@ -230,7 +197,8 @@
                 <div class="button-with-help">
                     <button
                         class="mod-cta"
-                        on:mousedown|preventDefault={applyStitch}
+                        on:mousedown|preventDefault={() =>
+                            applyFormatting('stitch')}
                         aria-label="Convert to Stitch">Stitch</button
                     >
                     <button
@@ -249,7 +217,8 @@
             <div class="button-grid">
                 <div class="button-with-help">
                     <button
-                        on:mousedown|preventDefault={applyChoice}
+                        on:mousedown|preventDefault={() =>
+                            applyFormatting('choice')}
                         aria-label="Single-use Choice">Choice</button
                     >
                     <button
@@ -262,7 +231,8 @@
                 </div>
                 <div class="button-with-help">
                     <button
-                        on:mousedown|preventDefault={applyStickyChoice}
+                        on:mousedown|preventDefault={() =>
+                            applyFormatting('sticky')}
                         aria-label="Sticky Choice">Sticky</button
                     >
                     <button
@@ -275,7 +245,8 @@
                 </div>
                 <div class="button-with-help">
                     <button
-                        on:mousedown|preventDefault={applyGather}
+                        on:mousedown|preventDefault={() =>
+                            applyFormatting('gather')}
                         aria-label="Gather point">Gather</button
                     >
                     <button
@@ -288,7 +259,8 @@
                 </div>
                 <div class="button-with-help">
                     <button
-                        on:mousedown|preventDefault={applyDivert}
+                        on:mousedown|preventDefault={() =>
+                            applyFormatting('divert')}
                         aria-label="Divert to knot">Divert</button
                     >
                     <button
