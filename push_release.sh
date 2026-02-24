@@ -9,7 +9,7 @@ if [ -f .env ]; then
     export $(cat .env | xargs)
 fi
 
-echo "Building project binaries for 0.3.8..."
+echo "Building project binaries for 0.3.9..."
 npm run build
 
 if [ $? -ne 0 ]; then
@@ -21,21 +21,21 @@ echo "Extracting artifacts..."
 cp temp/vault/.obsidian/plugins/lineage-dev/main.js main.js
 cp temp/vault/.obsidian/plugins/lineage-dev/styles.css styles.css
 
-echo "Creating GitHub Release 0.3.8..."
+echo "Creating GitHub Release 0.3.9..."
 if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-gh release create 0.3.8 main.js manifest.json styles.css \
-    --title "0.3.8 - Sidebar Selections & Editable Preview" \
+gh release create 0.3.9 main.js manifest.json styles.css \
+    --title "0.3.9 - Robust Sidebar & Node Re-parenting" \
     --notes "### Features
-- **Editable Sidebar Editor**: Directly sync card content from the sidebar with auto-save to the main Lineage card.
-- **Topology Check**: One-click 'Parse & Check' to validate your card against Ink-Lineage authoring rules.
-- **'Make Child of...'**: New action button to instantly re-parent the current card to any other card in the document.
-- **In-Vault Help**: The Topology Rules help modal now pulls documentation directly from your vault's 'Storyflow/' folder."
+- **Robust Sidebar Formatting**: Unified `reformatBlock` logic with exhaustive marker cleanup. Swapping between Knot/Stitch/Choice/Gather is now bulletproof.
+- **Improved Node Re-parenting**: Fixed cursor focus and store consistency issues when moving nodes via the 'Make Child of' button.
+- **Stability Fixes**: Resolved unused export warnings and accessibility lint issues in Svelte components.
+- **In-Vault Help Localization**: Topology Rules help modal now correctly resolves to your local 'Storyflow/' directory."
 
 if [ $? -eq 0 ]; then
-    echo "✅ Release 0.3.8 published successfully!"
+    echo "✅ Release 0.3.9 published successfully!"
     echo "Cleaning up local build copies..."
     rm main.js styles.css
 else

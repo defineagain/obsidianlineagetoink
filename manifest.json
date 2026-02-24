@@ -1,7 +1,7 @@
 {
 	"id": "obsidianlineagetoink",
 	"name": "Lineage to Ink",
-	"version": "0.3.8",
+	"version": "0.3.9",
 	"minAppVersion": "0.15.0",
 	"description": "Edit Markdown in a keyboard-centric Miller columns interface. Inspired by Gingko Writer.",
 	"author": "ycnmhd",
