@@ -2,33 +2,54 @@ import { slugify } from '../../helpers/slugify';
 
 export type BlockType = 'knot' | 'stitch' | 'choice' | 'sticky' | 'gather' | 'divert' | 'plain';
 
+/**
+ * Radical Reset Strategy:
+ * 1. Split content into lines.
+ * 2. Strip leading Knot/Stitch header lines entirely.
+ * 3. Strip leading Weave/Divert markers from the first content line.
+ * 4. Rebuild from the pure body.
+ */
 export function reformatBlock(content: string, targetType: BlockType): string {
     let lines = content.split('\n');
     
-    // Strict markers (must be at the start of the line)
-    const knotRegex = /^===\s*([^=]*?)\s*===\s*$/;
-    const stitchRegex = /^=\s*([^=]*?)\s*$/;
-    const weaveRegex = /^(\*|\+|-|->)\s*/;
-
-    // We only strip from the TOP of the file.
-    // If we find multiple markers at the top, we keep stripping until we hit actual content.
+    // 1. Strip leading empty lines and structural headers (Knot/Stitch)
     while (lines.length > 0) {
-        const firstLine = lines[0].trim();
-        if(!firstLine) {
+        const line = lines[0].trim();
+        if (!line) {
             lines.shift();
             continue;
         }
 
-        if (knotRegex.test(firstLine) || stitchRegex.test(firstLine) || weaveRegex.test(firstLine)) {
+        // Knot Header: === name ===
+        if (/^===\s*[^=]*?\s*===\s*$/.test(line)) {
             lines.shift();
             continue;
         }
+
+        // Stitch Header: = name
+        if (/^=\s*[^=]*?$/.test(line)) {
+            lines.shift();
+            continue;
+        }
+
         break;
     }
 
-    let body = lines.join('\n').trimStart();
+    // 2. Clear markers from the first remaining content line
+    if (lines.length > 0) {
+        // Strip any number of *, +, -, or -> markers from the start of the first content line
+        lines[0] = lines[0].replace(/^(\*|\+|-|->)+\s*/, '');
+        
+        // If stripping markers left the line empty, shift it and try again for the next line
+        // (but only once to avoid over-stripping actual story content)
+        if (!lines[0].trim()) {
+            lines.shift();
+        }
+    }
 
-    // Now apply the target marker
+    const body = lines.join('\n').trimStart();
+
+    // 3. Apply the new configuration
     switch (targetType) {
         case 'knot': {
             const firstLine = body.split('\n')[0].trim() || 'knot';
