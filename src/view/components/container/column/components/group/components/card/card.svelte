@@ -13,6 +13,7 @@
     import CardStyle from './components/card-style.svelte';
     import LogicBadge from './components/LogicBadge.svelte';
     import ChoiceTypeToggle from './components/ChoiceTypeToggle.svelte';
+    import InkHeader from './components/InkHeader.svelte';
 
     export let node: NodeId;
     export let editing: boolean;
@@ -75,6 +76,7 @@
     {#if style}
         <CardStyle {style} />
     {/if}
+    <InkHeader nodeId={node} />
     <LogicBadge nodeId={node} />
     <ChoiceTypeToggle nodeId={node} {isInSidebar} />
     {#if active === ActiveStatus.node && editing}

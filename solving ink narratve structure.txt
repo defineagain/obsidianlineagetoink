@@ -1,0 +1,156 @@
+This is a complex parsing challenge because **Ink is flow-based** (linear beats), while **Lineage/Obsidian is hierarchical** (parents/children).
+
+The "User Unfriendly" rendering you are seeing (the "Staircase Effect") happens because your current importer treats **narrative continuity as hierarchy**. It is nesting every subsequent paragraph as a child of the previous one, or splitting single narrative beats into fragmented nodes.
+
+Here is the solution to render complex Ink files in a way that is readable, editable, and structurally sound for your Storyflow Editor.
+
+### The Core Solution: "The Beat Aggregation Strategy"
+
+You must change your Tokenizer to stop creating a new node for every line. Instead, you must aggregate lines into **Narrative Beats**.
+
+**Rule:** A "Card" (Node) in Lineage should only terminate when a **Structural Control** is encountered.
+
+**The Chunking Logic:**
+Accumulate all lines into a single buffer (`Current_Card_Body`) until you hit one of these "Hard Breaks":
+
+1. `===` (Knot)
+2. `=` (Stitch)
+3. `*` or `+` (Choice)
+4. `-` (Gather) — *Only if it is a structural gather, not a list item.*
+
+#### 1. The "Bad" vs. "Good" Output
+
+**Current "Bad" Output (Fragmented):**
+
+```markdown
+- Half an hour goes by before Commander Harris returns. 
+
+"Well, then," he begins, awkwardly.
+
+```
+
+*Why it fails:* It forces the user to click into a child to read the next sentence.
+
+**Correct "Good" Output (Aggregated):**
+
+```markdown
+# Waited
+- Half an hour goes by before Commander Harris returns. He closes the door behind him quickly, as though afraid a loose word might slip inside.
+
+"Well, then," he begins, awkwardly. This is an unseemly situation.
+
+```
+
+*Why it works:* The entire "beat" is visible in one pane.
+
+---
+
+### 2. Structural Mapping Algorithm
+
+To implement this, apply these rules to your DAG Builder:
+
+#### A. Knot & Stitch Handling (Global Containers)
+
+* **Knots (`===`)**: Column 0.
+* **Stitches (`=`)**: Column 1.
+* **Content**: Any text immediately following the Knot/Stitch header goes into the **Body** of that card.
+
+#### B. The Choice Logic (Branching)
+
+* **Input**: `* "Commander."`
+* **Card Title**: `"Commander."` (The Choice Text).
+* **Card Body**: The result text immediately following the choice (e.g., `He nods.`).
+* **Hierarchy**: These become **Children** (Next Column) of the active Narrative Beat.
+
+#### C. The Gather Logic (Re-convergence)
+
+This is the hardest part. In a Miller-Column tree, you cannot easily "merge" branches back together visually.
+
+* **The Fix**: Treat Gathers (`-`) as **Siblings** to the previous block of Choices, located in the **Same Column** as the node that initiated the choices.
+* **Visual Flow**:
+1. Node A (Narrative) [Col 2]
+2. Node B (Choice) [Col 3, Child of A]
+3. Node C (Choice) [Col 3, Child of A]
+4. Node D (Gather) [Col 2, Sibling of A] <- **This is the critical change.**
+
+
+
+*Note: If your DAG implementation supports multiple parents, link B and C to D. If it is strictly a tree (Lineage standard), place D as a sibling of A, effectively creating a linear sequence of "Beats" in Column 2.*
+
+---
+
+### 3. Refined Markdown Output Example
+
+Here is how the `=== start ===` knot from your file should look after passing through this new logic.
+
+**Obsidian/Lineage Markdown Output:**
+
+```markdown
+# Start
+// Intro
+- They are keeping me waiting.
+
+# Hut 14
+* Hut 14[]. The door was locked after I sat down.
+
+I don't even have a pen to do any work. There's a copy of the morning's intercept in my pocket, but staring at the jumbled letters will only drive me mad.
+
+I am not a machine, whatever they say about me.
+
+# Opts
+- (opts)
+{|I rattle my fingers on the field table.|}
+
+# Think
+* (think) [Think]
+They suspect me to be a traitor. They think I stole the component from the calculating machine. They will be searching my bunk and cases.
+
+When they don't find it, {plan:then} they'll come back and demand I talk.
+[[opts]]
+
+# Plan
+* (plan) [Plan]
+{not think:What I am is|I am} a problem—solver. Good with figures, quick with crosswords, excellent at chess.
+
+But in this scenario — in this trap — what is the winning play?
+
+# Co-operate
+* * (cooperate) [Co—operate]
+I must co—operate. My credibility is my main asset. To contradict myself, or another source, would be fatal.
+I must simply hope they do not ask the questions I do not want to answer.
+~ lower(forceful)
+
+# Dissemble
+* * [Dissemble]
+Misinformation, then. Just as the war in Europe is one of plans and interceptions, not planes and bombs.
+My best hope is a story they prefer to the truth.
+~ raise(forceful)
+
+# Divert
+* * (delay) [Divert]
+Avoidance and delay. The military machine never fights on a single front. If I move slowly enough, things will resolve themselves some other way, my reputation intact.
+~ raise(evasive)
+
+# Wait
+* [Wait]
+- [[waited]]
+
+```
+
+### 4. Technical Implementation Steps
+
+1. **Regex Grouping**:
+Instead of `split('\n')`, iterate through lines.
+Maintain a `buffer`.
+If line matches `^(\*|\+|===|=|-)`:
+* Flush `buffer` to previous Card.
+* Start new Card.
+* Set `Hierarchy Level` based on symbol depth.
+Else:
+* Append line to `buffer`.
+
+
+2. **Title Sanitization**:
+If a node has no label (like a pure Gather `-`), generate a title from the first 5 words of the content (e.g., `# They are keeping me...`).
+3. **Wikilink Preservation**:
+Ensure `[[waited]]` stays inside the Card Body. Your importer seems to handle this, but ensure it doesn't try to create a new card just for the divert unless that divert is the *only* content.

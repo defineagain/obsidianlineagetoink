@@ -20,6 +20,8 @@ import { onPluginError } from 'src/lib/store/on-plugin-error';
 import invariant from 'tiny-invariant';
 import { sortChildNodes } from 'src/view/actions/context-menu/card-context-menu/helpers/sort-child-nodes';
 import { ejectDocument } from 'src/obsidian/commands/helpers/export-document/eject-document';
+import { importInk } from 'src/obsidian/commands/helpers/import-ink/import-ink';
+
 
 const createCommands = (plugin: Lineage) => {
     const commands: (Omit<Command, 'id' | 'callback'> & {
@@ -306,8 +308,18 @@ const createCommands = (plugin: Lineage) => {
         },
     });
 
+    commands.push({
+        name: 'Import Ink file',
+        icon: 'import',
+        checkCallback: (checking) => {
+            if (checking) return true;
+            importInk(plugin);
+        },
+    });
+
     return commands;
 };
+
 
 export const addCommands = (plugin: Lineage) => {
     const commands = createCommands(plugin);

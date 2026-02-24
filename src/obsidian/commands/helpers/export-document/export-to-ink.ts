@@ -23,10 +23,17 @@ export const exportToInk = async (view: LineageView) => {
         }
 
         const fileData = await view.plugin.app.vault.read(file);
-        const { body } = extractFrontmatter(fileData);
+        const { body, frontmatter } = extractFrontmatter(fileData);
         const tree = htmlCommentToJson(body);
         
-        const inkSource = astToInk(tree);
+        // Extract story-logic from frontmatter
+        const logicMatch = frontmatter.match(/story-logic: \|([\s\S]+?)(?=\n[a-z0-9-]+:|$)/);
+        const logic = logicMatch ? logicMatch[1].split('\n').map(line => line.replace(/^  /, '')).join('\n').trim() : "";
+
+        let inkSource = astToInk(tree);
+        if (logic) {
+            inkSource = `${logic}\n\n${inkSource}`;
+        }
 
         // Download to disk via browser API
         const blob = new Blob([inkSource], { type: 'text/plain;charset=utf-8' });
