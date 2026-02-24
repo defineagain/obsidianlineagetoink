@@ -76,6 +76,13 @@ export const astToInk = (nodes: TreeNode[], depth: number = 0): string => {
         }
         
         if (node.children && node.children.length > 0) {
+            // Automation: If this is a Knot (depth 0) or Stitch (depth 1) and has children,
+            // and it doesn't already have a divert (->), add one to the first child
+            if (depth < 2 && !content.includes('->')) {
+                const firstChild = node.children[0];
+                const firstChildName = getHeaderName(firstChild.content, `child_${Date.now()}`);
+                result += `-> ${firstChildName}\n`;
+            }
             result += astToInk(node.children, depth + 1);
         }
     }
