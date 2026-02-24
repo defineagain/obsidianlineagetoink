@@ -11,6 +11,7 @@
         validateNodeTopology,
         type ValidationResult,
     } from 'src/lib/ink-exporter/topology-validator';
+    import { SelectParentModal } from '../../modals/select-parent-modal/select-parent-modal';
 
     export let plugin: Lineage;
     export let view: any;
@@ -179,6 +180,25 @@
     $: if (nodeContent) {
         validationResult = null;
     }
+
+    const makeChildOf = () => {
+        if (!activeView || !activeNodeId) return;
+        new SelectParentModal(
+            plugin.app,
+            activeView,
+            activeNodeId,
+            (targetId) => {
+                activeView!.documentStore.dispatch({
+                    type: 'document/drop-node',
+                    payload: {
+                        droppedNodeId: activeNodeId!,
+                        targetNodeId: targetId,
+                        position: 'right',
+                    },
+                });
+            },
+        ).open();
+    };
 </script>
 
 <div class="lineage-ink-block-editor">
@@ -320,6 +340,9 @@
             <button class="mod-cta" on:mousedown|preventDefault={runValidation}>
                 Parse & Check
             </button>
+            <button on:mousedown|preventDefault={makeChildOf}>
+                Make Child of...
+            </button>
             <button
                 class="mod-ghost"
                 on:mousedown|preventDefault={showTopologyRules}
@@ -431,19 +454,6 @@
         border-top: 1px solid var(--background-modifier-border);
     }
 
-    .footer-actions {
-        margin-top: auto;
-        padding-top: 1rem;
-        display: flex;
-        justify-content: center;
-        border-top: 1px solid var(--background-modifier-border);
-    }
-
-    .footer-actions button {
-        font-size: 0.8em;
-        color: var(--text-muted);
-    }
-
     .content-editor {
         width: 100%;
         min-height: 150px;
@@ -495,15 +505,18 @@
     .footer-actions {
         margin-top: auto;
         padding-top: 1rem;
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 0.5rem;
-        justify-content: stretch;
         border-top: 1px solid var(--background-modifier-border);
     }
 
     .footer-actions button {
-        flex: 1;
         font-size: 0.8em;
+    }
+
+    .footer-actions button.mod-ghost {
+        grid-column: span 2;
     }
 
     .empty-state {
