@@ -33,8 +33,9 @@ export function inkToAst(ink: string): { tree: TreeNode[], logic: string } {
         const isCONST = trimmed.startsWith('CONST ');
         const isLIST = trimmed.startsWith('LIST ');
         const isFunction = trimmed.match(/^===\s*function\b/);
+        const isComment = trimmed.startsWith('//');
 
-        if ((isVAR || isCONST || isLIST || isFunction || (!currentKnot && !trimmed)) && 
+        if ((isVAR || isCONST || isLIST || isFunction || isComment || (!currentKnot && !trimmed)) && 
             !trimmed.match(/^([\*\+\-]+)\s/) && 
             !trimmed.match(/^=+\s*([^=].*)$/) && 
             !trimmed.match(/^===\s*(.*?)\s*===/)) {
@@ -58,6 +59,7 @@ export function inkToAst(ink: string): { tree: TreeNode[], logic: string } {
         const weaveMatch = trimmed.match(/^([\*\+]+|-+(?!>))\s*(.*)$/);
 
         if (knotMatch || stitchMatch || weaveMatch) {
+            inLogicBlock = false; // Exit logic if we hit a structural marker
             if (knotMatch) {
                 const name = knotMatch[1].trim();
                 const node: TreeNode = { content: `# ${name}`, children: [] };
@@ -140,6 +142,7 @@ export function inkToAst(ink: string): { tree: TreeNode[], logic: string } {
 
 function translateDiverts(text: string): string {
     return text.replace(/->\s*([a-zA-Z0-9_\.]+)/g, (match, target) => {
+        if (target === 'END') return `[[END]]`;
         const cleanTarget = target.replace(/\./g, '#');
         return `[[${cleanTarget}]]`;
     });

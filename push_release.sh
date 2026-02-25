@@ -35,12 +35,11 @@ if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-NOTES="### Unified Global Variable Registry
-- **Board-Wide Aggregation**: The sidebar now automatically scans the ENTIRE storyboard for variables, providing a unified list of everything in play.
-- **Implicit Declaration**: No manual VAR declaration needed. Any variable found in a card can be initialized/edited directly from the sidebar.
-- **Current-Card Context**: Variables used in the active card are highlighted with a \"●\" indicator, while all other storyboard variables remain visible and editable.
-- **Auto-Initialization**: Setting a value for an undeclared variable automatically adds it to the \"Story Logic\" globally.
-- **Updated Docs**: Documentation now reflects the streamlined variable handling philosophy."
+NOTES="### Ink Import/Export Fidelity (v0.6.1)
+- **Structural Accuracy**: Improved the round-trip fidelity of Ink files, ensuring that complex narrative structures (weaves) are preserved.
+- **Weave Integrity**: Fixed the issue where weave elements in the second column were being incorrectly transformed into new stitches (knots).
+- **Preamble Support**: Leading comments and story setup text are now correctly captured and preserved in the 'Story Logic' block.
+- **Strict END Case**: Guaranteed that \`-> END\` remains in its standard uppercase format to maintain Ink syntax compatibility."
 
 # Determine which files to include based on existence
 FILES="main.js manifest.json"
@@ -48,8 +47,15 @@ if [ -f styles.css ]; then
     FILES="$FILES styles.css"
 fi
 
+# Determine title based on version
+if [[ "$VERSION" == "0.6.1" ]]; then
+    TITLE="v0.6.1 - Ink Import/Export Fidelity"
+else
+    TITLE="$VERSION - Unified Variable Registry"
+fi
+
 gh release create "$VERSION" $FILES \
-    --title "$VERSION - Unified Variable Registry" \
+    --title "$TITLE" \
     --notes "$NOTES"
 
 if [ $? -eq 0 ]; then
