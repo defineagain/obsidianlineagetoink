@@ -35,8 +35,7 @@ import {
 import { onVaultEvent } from 'src/stores/plugin/subscriptions/on-vault-event';
 import { onWorkspaceEvent } from 'src/stores/plugin/subscriptions/on-workspace-event';
 import { SettingsActions } from 'src/stores/settings/settings-store-actions';
-import { InkPresentationView, INK_PRESENTATION_VIEW_TYPE } from 'src/view/InkPresentationView';
-import { InkBlockEditorView, INK_BLOCK_EDITOR_VIEW_TYPE } from 'src/view/InkBlockEditorView';
+import { InkSidebarView, INK_SIDEBAR_VIEW_TYPE } from 'src/view/InkSidebarView';
 
 export type SettingsStore = Store<Settings, SettingsActions>;
 export type PluginStore = Store<PluginState, PluginStoreActions>;
@@ -62,12 +61,8 @@ export default class Lineage extends Plugin {
             (leaf) => new LineageView(leaf, this),
         );
         this.registerView(
-            INK_PRESENTATION_VIEW_TYPE,
-            (leaf) => new InkPresentationView(leaf, this)
-        );
-        this.registerView(
-            INK_BLOCK_EDITOR_VIEW_TYPE,
-            (leaf) => new InkBlockEditorView(leaf, this)
+            INK_SIDEBAR_VIEW_TYPE,
+            (leaf) => new InkSidebarView(leaf, this)
         );
         addCommands(this);
         this.registerPatches();
@@ -128,17 +123,19 @@ export default class Lineage extends Plugin {
         );
         this.addRibbonIcon(
             'layout-grid',
-            'Open Ink Block Editor',
+            'Open Ink Sidebar',
             () => {
                 const { workspace } = this.app;
-                let leaf = workspace.getLeavesOfType(INK_BLOCK_EDITOR_VIEW_TYPE)[0];
+                let leaf = workspace.getLeavesOfType(INK_SIDEBAR_VIEW_TYPE)[0];
                 if (!leaf) {
                     const rightLeaf = workspace.getRightLeaf(false);
                     if (rightLeaf) {
-                        rightLeaf.setViewState({ type: INK_BLOCK_EDITOR_VIEW_TYPE, active: true });
+                        rightLeaf.setViewState({ type: INK_SIDEBAR_VIEW_TYPE, active: true });
                         workspace.revealLeaf(rightLeaf);
                     }
                 } else {
+                    const view = leaf.view as InkSidebarView;
+                    view.setTab('editor');
                     workspace.revealLeaf(leaf);
                 }
             }

@@ -35,11 +35,11 @@ if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-NOTES="### Ink Import/Export Fidelity (v0.6.1)
-- **Structural Accuracy**: Improved the round-trip fidelity of Ink files, ensuring that complex narrative structures (weaves) are preserved.
-- **Weave Integrity**: Fixed the issue where weave elements in the second column were being incorrectly transformed into new stitches (knots).
-- **Preamble Support**: Leading comments and story setup text are now correctly captured and preserved in the 'Story Logic' block.
-- **Strict END Case**: Guaranteed that \`-> END\` remains in its standard uppercase format to maintain Ink syntax compatibility."
+NOTES="### Unified Ink Sidebar (v0.6.2)
+- **Tabbing Interface**: The Ink Block Editor and Ink Player (Presentation) are now unified into a single sidebar view with tabs.
+- **Workflow Persistence**: Switching between editing and previewing no longer replaces the sidebar leaf, preventing the pane from \"disappearing\".
+- **Command-Aware Activation**: Running the \"Open Presentation View\" command automatically switches the unified sidebar to the Player tab.
+- **Ribbon Integration**: The ribbon icon now opens the unified sidebar and defaults to the Editor tab."
 
 # Determine which files to include based on existence
 FILES="main.js manifest.json"
@@ -48,7 +48,9 @@ if [ -f styles.css ]; then
 fi
 
 # Determine title based on version
-if [[ "$VERSION" == "0.6.1" ]]; then
+if [[ "$VERSION" == "0.6.2" ]]; then
+    TITLE="v0.6.2 - Unified Ink Sidebar"
+elif [[ "$VERSION" == "0.6.1" ]]; then
     TITLE="v0.6.1 - Ink Import/Export Fidelity"
 else
     TITLE="$VERSION - Unified Variable Registry"

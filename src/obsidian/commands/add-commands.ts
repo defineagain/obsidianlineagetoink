@@ -9,7 +9,7 @@ import { createLineageDocument } from 'src/obsidian/events/workspace/effects/cre
 import { getActiveLineageView } from 'src/obsidian/commands/helpers/get-active-lineage-view';
 import { openSplitNodeModal } from 'src/view/modals/split-node-modal/open-split-node-modal';
 
-import { INK_PRESENTATION_VIEW_TYPE } from 'src/view/InkPresentationView';
+import { INK_SIDEBAR_VIEW_TYPE, InkSidebarView } from 'src/view/InkSidebarView';
 import { isEditing } from 'src/view/actions/keyboard-shortcuts/helpers/commands/commands/helpers/is-editing';
 import { copyLinkToBlock } from 'src/view/actions/context-menu/card-context-menu/helpers/copy-link-to-block';
 import { extractBranch } from 'src/obsidian/commands/helpers/extract-branch/extract-branch';
@@ -49,14 +49,19 @@ const createCommands = (plugin: Lineage) => {
         checkCallback: (checking) => {
             if (checking) return true;
             const { workspace } = plugin.app;
-            let leaf = workspace.getLeavesOfType(INK_PRESENTATION_VIEW_TYPE)[0];
+            let leaf = workspace.getLeavesOfType(INK_SIDEBAR_VIEW_TYPE)[0];
             if (!leaf) {
                 const rightLeaf = workspace.getRightLeaf(false);
                 if (rightLeaf) {
-                    rightLeaf.setViewState({ type: INK_PRESENTATION_VIEW_TYPE, active: true });
+                    rightLeaf.setViewState({ type: INK_SIDEBAR_VIEW_TYPE, active: true }).then(() => {
+                        const view = rightLeaf.view as InkSidebarView;
+                        view.setTab('player');
+                    });
                     workspace.revealLeaf(rightLeaf);
                 }
             } else {
+                const view = leaf.view as InkSidebarView;
+                view.setTab('player');
                 workspace.revealLeaf(leaf);
             }
         },
