@@ -161,19 +161,16 @@
         );
     }
 
-    let validationResult: ValidationResult | null = null;
-    const runValidation = () => {
-        if (!activeView || !activeNodeId) return;
+    $: validationResult = (() => {
+        if (!activeView || !activeNodeId) return null;
         const state = activeView.documentStore.getValue();
         const depth = state.document.columns.findIndex((c) =>
             c.groups.some((g) => g.nodes.includes(activeNodeId!)),
         );
-        validationResult = validateNodeTopology(nodeContent, depth);
-    };
+        return validateNodeTopology(nodeContent, depth);
+    })();
 
-    $: if (nodeContent) {
-        validationResult = null;
-    }
+
 
     const makeChildOf = () => {
         if (!activeView || !activeNodeId) return;
@@ -365,15 +362,13 @@
                     <strong
                         >Topology Check: {validationResult.type.toUpperCase()}</strong
                     >
+                    <span class="detected-type-tag">{validationResult.detectedType}</span>
                 </div>
                 <div class="val-message">{validationResult.message}</div>
             </div>
         {/if}
 
         <div class="footer-actions">
-            <button class="mod-cta" on:mousedown|preventDefault={runValidation}>
-                Parse & Check
-            </button>
             <button on:mousedown|preventDefault={makeChildOf}>
                 Make Child of...
             </button>
@@ -543,6 +538,18 @@
 
     .val-header {
         margin-bottom: 0.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .detected-type-tag {
+        font-size: 0.7em;
+        text-transform: uppercase;
+        background: rgba(var(--text-normal-rgb), 0.1);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-family: var(--font-monospace);
     }
 
     .footer-actions {
