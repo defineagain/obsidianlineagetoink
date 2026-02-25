@@ -2,6 +2,7 @@
     import { getView } from 'src/view/components/container/context';
     import { onDestroy } from 'svelte';
     import { debounce } from 'obsidian';
+    import { parseGlobalVariables, type InkVariable } from 'src/lib/ink-exporter/variable-utils';
 
     const view = getView();
     const documentStore = view.documentStore;
@@ -16,41 +17,7 @@
     let functions: string = '';
     let title = '';
 
-    function parseLogicBlock(logic: string): { vars: InkVariable[]; funcs: string } {
-        const vars: InkVariable[] = [];
-        const funcLines: string[] = [];
-        let inFunc = false;
 
-        for (const line of logic.split('\n')) {
-            const trimmed = line.trim();
-            const varMatch = trimmed.match(/^(VAR|CONST)\s+(\w+)\s*=\s*(.+)$/);
-            if (varMatch) {
-                vars.push({ type: varMatch[1] as 'VAR' | 'CONST', name: varMatch[2], value: varMatch[3].trim() });
-                continue;
-            }
-            if (trimmed.startsWith('=== function') || inFunc) {
-                inFunc = true;
-                funcLines.push(line);
-                // A blank line or new knot ends the function block
-                if (inFunc && funcLines.length > 1 && !trimmed) {
-                    inFunc = false;
-                }
-                continue;
-            }
-            if (trimmed.startsWith('LIST ')) {
-                // LIST treated as a VAR-like entry
-                const listMatch = trimmed.match(/^LIST\s+(\w+)\s*=\s*(.+)$/);
-                if (listMatch) {
-                    vars.push({ type: 'VAR', name: `LIST ${listMatch[1]}`, value: listMatch[2].trim() });
-                }
-                continue;
-            }
-            if (trimmed) {
-                funcLines.push(line);
-            }
-        }
-        return { vars, funcs: funcLines.join('\n').trim() };
-    }
 
     function serializeLogicBlock(vars: InkVariable[], funcs: string): string {
         const varLines = vars.map(v => {
@@ -69,16 +36,10 @@
     // Subscribe to frontmatter changes
     const unsub = documentStore.subscribe((state) => {
         const fm = state.file.frontmatter;
-        const logicMatch = fm.match(/story-logic: \|([\s\S]+?)(?=\n[a-z0-9-]+:|$)/);
-        if (logicMatch) {
-            const raw = logicMatch[1].split('\n').map((line: string) => line.replace(/^  /, '')).join('\n').trim();
-            const parsed = parseLogicBlock(raw);
-            variables = parsed.vars;
-            functions = parsed.funcs;
-        } else {
-            variables = [];
-            functions = '';
-        }
+        const parsed = parseGlobalVariables(fm);
+        variables = parsed.vars;
+        functions = parsed.funcs;
+        
         const titleMatch = fm.match(/^title:\s*(.*)$/m);
         if (titleMatch) {
             title = titleMatch[1].trim();

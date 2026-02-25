@@ -17,6 +17,13 @@
         detectBlockType,
         type BlockType,
     } from 'src/lib/ink-exporter/block-formatter';
+    import {
+        extractLocalVariables,
+        validateVariableRef,
+        parseGlobalVariables,
+        type VariableRef,
+        type VariableValidationResult,
+    } from 'src/lib/ink-exporter/variable-utils';
     import { TOPOLOGY_RULES_MD } from 'src/lib/ink-exporter/topology-rules-content';
     import { MarkdownRenderer } from 'obsidian';
 
@@ -88,20 +95,29 @@
     // Reactive taxonomy detection
     $: currentType = detectBlockType(nodeContent);
 
-    // Extract variable references from card content
+    $: validationResult = (() => {
+        if (!activeView || !activeNodeId) return null;
+        const state = activeView.documentStore.getValue();
+        const depth = state.document.columns.findIndex((c) =>
+            c.groups.some((g) => g.nodes.includes(activeNodeId!)),
+        );
+        return validateNodeTopology(nodeContent, depth);
+    })();
+
+    $: globals = (() => {
+        if (!activeView) return [];
+        const state = activeView.documentStore.getValue();
+        const { vars } = parseGlobalVariables(state.file.frontmatter);
+        // Clean names: remove "LIST " prefix for matching
+        return vars.map(v => v.name.replace(/^LIST\s+/, ''));
+    })();
+
     $: variableRefs = (() => {
-        const text = nodeContent || '';
-        const refs: { fullMatch: string; varName: string; expression: string }[] = [];
-        const regex = /\{([^}]+)\}/g;
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-            const inner = match[1];
-            const varName = inner.split(':')[0].split('|')[0].split('>')[0].split('<')[0].split('!')[0].trim();
-            if (varName && /^[a-zA-Z_]\w*$/.test(varName)) {
-                refs.push({ fullMatch: match[0], varName, expression: inner });
-            }
-        }
-        return refs;
+        const refs = extractLocalVariables(nodeContent);
+        return refs.map(ref => ({
+            ...ref,
+            validation: validateVariableRef(ref, globals)
+        }));
     })();
 
     function applyFormatting(targetType: BlockType) {
@@ -160,17 +176,6 @@
             null as any,
         );
     }
-
-    $: validationResult = (() => {
-        if (!activeView || !activeNodeId) return null;
-        const state = activeView.documentStore.getValue();
-        const depth = state.document.columns.findIndex((c) =>
-            c.groups.some((g) => g.nodes.includes(activeNodeId!)),
-        );
-        return validateNodeTopology(nodeContent, depth);
-    })();
-
-
 
     const makeChildOf = () => {
         if (!activeView || !activeNodeId) return;
@@ -317,19 +322,34 @@
         {/if}
 
         {#if variableRefs.length > 0}
-            <div class="block-group">
-                <div class="group-label">Variable References</div>
-                <div class="var-refs-list">
+            <div class="variable-section">
+                <div class="group-label">Variable Registry</div>
+                <div class="variable-refs">
                     {#each variableRefs as ref}
-                        <div class="var-ref-row">
-                            <span class="var-ref-badge">{ref.varName}</span>
+                        <div 
+                            class="variable-ref-row" 
+                            class:val-warning={ref.validation.type === 'warning'} 
+                            class:val-error={ref.validation.type === 'error'}
+                            title={ref.validation.message}
+                        >
+                            <div class="var-badge-container">
+                                <span class="var-badge">{ref.varName}</span>
+                                {#if ref.validation.type !== 'success'}
+                                    <span class="var-status-icon"
+                                        >{ref.validation.type === 'error' ? '!' : '?'}</span
+                                    >
+                                {/if}
+                            </div>
                             <input
                                 type="text"
                                 class="var-ref-input"
                                 value={ref.expression}
                                 on:change={(e) => {
                                     const newExpr = e.currentTarget.value;
-                                    const updated = nodeContent.replace(ref.fullMatch, `{${newExpr}}`);
+                                    const updated = nodeContent.replace(
+                                        ref.fullMatch,
+                                        `{${newExpr}}`,
+                                    );
                                     updateContent(updated);
                                 }}
                                 on:click|stopPropagation
@@ -614,19 +634,45 @@
     }
 
     /* Variable references */
-    .var-refs-list {
+    .variable-section {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .variable-refs {
         display: flex;
         flex-direction: column;
         gap: 0.4rem;
     }
 
-    .var-ref-row {
+    .variable-ref-row {
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        padding: 4px 8px;
+        border-radius: var(--radius-s);
+        transition: all 0.1s ease-in-out;
     }
 
-    .var-ref-badge {
+    .variable-ref-row.val-warning {
+        background: rgba(var(--color-orange-rgb), 0.1);
+        border-left: 2px solid var(--color-orange);
+    }
+
+    .variable-ref-row.val-error {
+        background: rgba(var(--color-red-rgb), 0.1);
+        border-left: 2px solid var(--color-red);
+    }
+
+    .var-badge-container {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        min-width: 80px;
+    }
+
+    .var-badge {
         display: inline-flex;
         align-items: center;
         font-size: 0.75em;

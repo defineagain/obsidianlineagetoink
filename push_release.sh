@@ -35,9 +35,11 @@ if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-NOTES="### Refined Topology Rules
-- **Permissive Column 2**: Column 2 no longer strictly requires a Stitch. It now accepts all Variations (Choices, Sticky Choices, Gathers, Diverts, and Plain Text) as valid.
-- **Improved Alignment**: Validation matches the full range of Ink structural possibilities while still keeping Knots organized in Column 1."
+NOTES="### Variable Management System
+- **Variable Registry**: The Ink Block Editor now lists all variables used in the current card.
+- **Global Cross-Validation**: Local {variable} references are now validated against declarations in \"Story Logic\". You'll get a warning if you use an undeclared variable.
+- **Syntax Validation**: Real-time syntax checking for complex Ink conditional expressions.
+- **Centralized Variable Utilities**: Shared logic between the Parameters sidebar and the Block Editor for 100% consistency."
 
 # Determine which files to include based on existence
 FILES="main.js manifest.json"
@@ -46,7 +48,7 @@ if [ -f styles.css ]; then
 fi
 
 gh release create "$VERSION" $FILES \
-    --title "$VERSION - Refined Topology Rules" \
+    --title "$VERSION - Variable Management System" \
     --notes "$NOTES"
 
 if [ $? -eq 0 ]; then
