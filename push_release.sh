@@ -35,13 +35,11 @@ if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-NOTES="### Ink Architecture Unification + Right Pane Restore
-- **Unified Variable Storage**: All variables now live in frontmatter story-logic (no .inkconfig sidecar).
-- **4-Tab Sidebar**: Pinned, Recent, Story Logic (structured VAR/CONST editor), Ink Tools.
-- **Variable Badges**: Cards referencing {variable_name} display read-only chips.
-- **Beat Aggregation**: Prose lines correctly aggregate into parent structural nodes during import.
-- **Right Pane Restored**: InkBlockEditorView opens as a native Obsidian right pane via layout-grid ribbon icon.
-- **Dead Code Removal**: Removed standalone PropertyEditorView."
+NOTES="### Taxonomy Feedback & Variable Editor
+- **Active topology buttons**: Knot/Stitch/Choice/Sticky/Gather/Divert buttons now highlight when matching the card's current type.
+- **Toggle behavior**: Clicking an already-active topology button strips markers and reverts to plain text.
+- **Variable References panel**: Cards with {variable} expressions show an editable panel in the Ink Block Editor.
+- **Right pane restored**: InkBlockEditorView opens as a native Obsidian right pane (layout-grid ribbon icon)."
 
 # Determine which files to include based on existence
 FILES="main.js manifest.json"
@@ -50,7 +48,7 @@ if [ -f styles.css ]; then
 fi
 
 gh release create "$VERSION" $FILES \
-    --title "$VERSION - Ink Architecture Unification" \
+    --title "$VERSION - Taxonomy Feedback & Variable Editor" \
     --notes "$NOTES"
 
 if [ $? -eq 0 ]; then
