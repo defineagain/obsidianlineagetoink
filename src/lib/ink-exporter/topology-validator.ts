@@ -34,9 +34,10 @@ export function validateNodeTopology(content: string, depth: number): Validation
     }
 
     if (depth === 1) {
-        // Column 2: Should be a Stitch
-        if (detectedType === 'stitch') {
-            return { isValid: true, message: 'Valid Stitch in Column 2.', type: 'success', detectedType };
+        // Column 2: Stitch OR Weave element
+        const isWeave = detectedType === 'choice' || detectedType === 'sticky' || detectedType === 'gather' || detectedType === 'divert';
+        if (detectedType === 'stitch' || isWeave) {
+            return { isValid: true, message: `Valid ${detectedType} in Column 2.`, type: 'success', detectedType };
         } else if (detectedType === 'knot') {
             return { 
                 isValid: false, 
@@ -45,10 +46,11 @@ export function validateNodeTopology(content: string, depth: number): Validation
                 detectedType
             };
         } else {
+            // Plain text is allowed as immediate continuation
             return { 
-                isValid: false, 
-                message: `Column 2 should be a Stitch (= Title). Detected: ${detectedType}.`, 
-                type: 'warning',
+                isValid: true, 
+                message: 'Plain text in Column 2. Valid for story content.', 
+                type: 'success',
                 detectedType
             };
         }

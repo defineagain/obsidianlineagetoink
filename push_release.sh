@@ -35,11 +35,9 @@ if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-NOTES="### Reactive Topology Validation
-- **Unified Block Detection**: Validation now uses the same `detectBlockType` logic as the UI buttons for 100% consistency.
-- **Reactive Sidebar**: The \"Parse & Check\" button has been removed; validation results now update automatically as you type or toggle block types.
-- **Detected Type Badge**: Validation panel now explicitly displays the detected block type alongside topology feedback.
-- **Improved Hierarchy Checks**: Improved depth-based validation for Knots, Stitches, and Weave elements."
+NOTES="### Refined Topology Rules
+- **Permissive Column 2**: Column 2 no longer strictly requires a Stitch. It now accepts all Variations (Choices, Sticky Choices, Gathers, Diverts, and Plain Text) as valid.
+- **Improved Alignment**: Validation matches the full range of Ink structural possibilities while still keeping Knots organized in Column 1."
 
 # Determine which files to include based on existence
 FILES="main.js manifest.json"
@@ -48,7 +46,7 @@ if [ -f styles.css ]; then
 fi
 
 gh release create "$VERSION" $FILES \
-    --title "$VERSION - Reactive Topology Validation" \
+    --title "$VERSION - Refined Topology Rules" \
     --notes "$NOTES"
 
 if [ $? -eq 0 ]; then
