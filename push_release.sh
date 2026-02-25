@@ -35,9 +35,10 @@ if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-NOTES="### Sidebar Ribbon Fix
-- **Fixed ribbon icon conflict**: Changed from panel-left (conflicted with Obsidian native sidebar) to layout-list.
-- **Active view guard**: Sidebar toggle ribbon icon only triggers when a Lineage view is active."
+NOTES="### Sidebar & Ribbon Fixes
+- **Sidebar visible by default**: Left sidebar opens automatically when entering Lineage view.
+- **Ribbon icon**: layout-list icon toggles Ink sidebar (only when Lineage view is active).
+- **Fixed icon conflict**: No longer conflicts with Obsidian native panel-left sidebar toggle."
 
 # Determine which files to include based on existence
 FILES="main.js manifest.json"
@@ -46,7 +47,7 @@ if [ -f styles.css ]; then
 fi
 
 gh release create "$VERSION" $FILES \
-    --title "$VERSION - Sidebar Ribbon Fix" \
+    --title "$VERSION - Sidebar & Ribbon Fixes" \
     --notes "$NOTES"
 
 if [ $? -eq 0 ]; then
