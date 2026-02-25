@@ -1,5 +1,6 @@
 import { Plugin, WorkspaceLeaf } from 'obsidian';
 import { LINEAGE_VIEW_TYPE, LineageView } from './view/view';
+import { getActiveLineageView } from 'src/obsidian/commands/helpers/get-active-lineage-view';
 import { createSetViewState } from 'src/obsidian/patches/create-set-view-state';
 import { around } from 'monkey-around';
 import { settingsReducer } from 'src/stores/settings/settings-reducer';
@@ -122,10 +123,13 @@ export default class Lineage extends Plugin {
             },
         );
         this.addRibbonIcon(
-            'panel-left',
+            'layout-list',
             'Toggle Ink Sidebar',
             () => {
-                this.settings.dispatch({ type: 'view/left-sidebar/toggle' });
+                const view = getActiveLineageView(this);
+                if (view) {
+                    this.settings.dispatch({ type: 'view/left-sidebar/toggle' });
+                }
             },
         );
 
