@@ -28,4 +28,10 @@ The column depth in Lineage determines the structural "level" of the Ink element
 
 1. **Auto-Divert**: If a card has children, flow continues into them unless an explicit \`->\` is found.
 2. **Choice Terminals**: Choices without children MUST end in \`-> destination\` or \`-> END\`.
+
+## 4. Variables & State
+
+1. **Inline References**: Use \`{variable}\` to display or check state.
+2. **Global Declaration**: Global \`VAR\` and \`CONST\` must be defined in the **Story Logic** (found in Sidebar / Parameters).
+3. **Variable Registry**: Use the sidebar to see which variables are in play. If a variable is missing from Story Logic, use the "Add to Global" action to resolve it.
 `;

@@ -21,8 +21,11 @@
         extractLocalVariables,
         validateVariableRef,
         parseGlobalVariables,
+        updateGlobalVariableInFM,
+        addGlobalVariableToFM,
         type VariableRef,
         type VariableValidationResult,
+        type InkVariable,
     } from 'src/lib/ink-exporter/variable-utils';
     import { TOPOLOGY_RULES_MD } from 'src/lib/ink-exporter/topology-rules-content';
     import { MarkdownRenderer } from 'obsidian';
@@ -104,21 +107,56 @@
         return validateNodeTopology(nodeContent, depth);
     })();
 
-    $: globals = (() => {
+    $: globalVars = (() => {
         if (!activeView) return [];
         const state = activeView.documentStore.getValue();
         const { vars } = parseGlobalVariables(state.file.frontmatter);
-        // Clean names: remove "LIST " prefix for matching
-        return vars.map(v => v.name.replace(/^LIST\s+/, ''));
+        return vars;
     })();
+
+    $: globalNames = globalVars.map((v) => v.name.replace(/^LIST\s+/, ''));
 
     $: variableRefs = (() => {
         const refs = extractLocalVariables(nodeContent);
-        return refs.map(ref => ({
+        return refs.map((ref) => ({
             ...ref,
-            validation: validateVariableRef(ref, globals)
+            validation: validateVariableRef(ref, globalNames),
         }));
     })();
+
+    $: undeclaredVars = (() => {
+        const uniqueLocalNames = [
+            ...new Set(variableRefs.map((r) => r.varName)),
+        ];
+        return uniqueLocalNames.filter((name) => !globalNames.includes(name));
+    })();
+
+    function updateGlobalVar(varName: string, newValue: string) {
+        if (!activeView) return;
+        const state = activeView.documentStore.getValue();
+        const currentFM = state.file.frontmatter;
+        const newFM = updateGlobalVariableInFM(currentFM, varName, newValue);
+        if (newFM !== currentFM) {
+            activeView.documentStore.dispatch({
+                type: 'document/file/update-frontmatter',
+                payload: { frontmatter: newFM },
+            });
+        }
+    }
+
+    function addPendingVar(varName: string) {
+        if (!activeView) return;
+        const state = activeView.documentStore.getValue();
+        const currentFM = state.file.frontmatter;
+        // Default to VAR with value 0
+        const newFM = addGlobalVariableToFM(currentFM, varName, 'VAR', '0');
+        if (newFM !== currentFM) {
+            activeView.documentStore.dispatch({
+                type: 'document/file/update-frontmatter',
+                payload: { frontmatter: newFM },
+            });
+        }
+    }
 
     function applyFormatting(targetType: BlockType) {
         if (!activeNodeId) return;
@@ -321,44 +359,53 @@
             </div>
         {/if}
 
-        {#if variableRefs.length > 0}
-            <div class="variable-section">
-                <div class="group-label">Variable Registry</div>
-                <div class="variable-refs">
-                    {#each variableRefs as ref}
-                        <div 
-                            class="variable-ref-row" 
-                            class:val-warning={ref.validation.type === 'warning'} 
-                            class:val-error={ref.validation.type === 'error'}
-                            title={ref.validation.message}
-                        >
-                            <div class="var-badge-container">
-                                <span class="var-badge">{ref.varName}</span>
-                                {#if ref.validation.type !== 'success'}
-                                    <span class="var-status-icon"
-                                        >{ref.validation.type === 'error' ? '!' : '?'}</span
-                                    >
-                                {/if}
-                            </div>
-                            <input
-                                type="text"
-                                class="var-ref-input"
-                                value={ref.expression}
-                                on:change={(e) => {
-                                    const newExpr = e.currentTarget.value;
-                                    const updated = nodeContent.replace(
-                                        ref.fullMatch,
-                                        `{${newExpr}}`,
-                                    );
-                                    updateContent(updated);
-                                }}
-                                on:click|stopPropagation
-                            />
+        <div class="variable-section">
+            <div class="group-label">Global Variable Registry</div>
+            <div class="variable-refs">
+                {#each globalVars as v}
+                    {@const isLocal = variableRefs.some(
+                        (ref) => ref.varName === v.name.replace(/^LIST\s+/, ''),
+                    )}
+                    <div class="variable-ref-row global-row" class:is-local={isLocal}>
+                        <div class="var-badge-container">
+                            <span class="var-badge">{v.name}</span>
+                            {#if isLocal}
+                                <span class="local-indicator" title="Present in this card">●</span>
+                            {/if}
                         </div>
-                    {/each}
-                </div>
+                        <input
+                            type="text"
+                            class="var-ref-input global-val-input"
+                            value={v.value}
+                            on:change={(e) => updateGlobalVar(v.name, e.currentTarget.value)}
+                            on:click|stopPropagation
+                        />
+                    </div>
+                {/each}
+
+                {#each undeclaredVars as pendingName}
+                    <div class="variable-ref-row val-warning">
+                        <div class="var-badge-container">
+                            <span class="var-badge">{pendingName}</span>
+                            <span class="var-status-icon">?</span>
+                        </div>
+                        <div class="pending-actions">
+                            <span class="pending-label">Undeclared</span>
+                            <button
+                                class="add-global-btn"
+                                on:click={() => addPendingVar(pendingName)}
+                            >
+                                + Add
+                            </button>
+                        </div>
+                    </div>
+                {/each}
+
+                {#if globalVars.length === 0 && undeclaredVars.length === 0}
+                    <div class="empty-state">No variables defined or used.</div>
+                {/if}
             </div>
-        {/if}
+        </div>
 
         <div class="preview-area">
             <div class="group-label">Card Content Editor</div>
@@ -653,6 +700,61 @@
         padding: 4px 8px;
         border-radius: var(--radius-s);
         transition: all 0.1s ease-in-out;
+    }
+
+    .variable-ref-row.global-row.is-local {
+        background: rgba(var(--interactive-accent-rgb), 0.1);
+        border-left: 2px solid var(--interactive-accent);
+    }
+
+    .local-indicator {
+        color: var(--interactive-accent);
+        font-size: 0.8em;
+        margin-left: 2px;
+    }
+
+    .global-val-input {
+        text-align: right;
+        color: var(--text-muted);
+        font-weight: bold;
+    }
+
+    .pending-actions {
+        flex: 1;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .pending-label {
+        font-size: 0.7em;
+        color: var(--text-warning);
+        text-transform: uppercase;
+        font-weight: bold;
+    }
+
+    .add-global-btn {
+        font-size: 0.7em;
+        padding: 2px 6px;
+        height: 20px;
+        background: var(--interactive-accent);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .add-global-btn:hover {
+        opacity: 0.8;
+    }
+
+    .empty-state {
+        font-size: 0.8em;
+        color: var(--text-faint);
+        text-align: center;
+        padding: 8px;
+        font-style: italic;
     }
 
     .variable-ref-row.val-warning {

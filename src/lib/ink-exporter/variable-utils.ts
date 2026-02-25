@@ -131,9 +131,77 @@ export function validateVariableRef(ref: VariableRef, globals: string[]): Variab
         }
     }
 
-    return {
-        isValid: true,
-        message: 'Defined and valid syntax.',
-        type: 'success'
-    };
+    return { isValid: true, message: 'Defined and valid syntax.', type: 'success' };
+}
+
+/**
+ * Serializes a list of variables and a functions string into the story-logic frontmatter format.
+ */
+export function serializeGlobalVariables(vars: InkVariable[], funcs: string): string {
+    const varLines = vars.map((v) => {
+        if (v.name.startsWith('LIST ')) {
+            return `${v.name} = ${v.value}`;
+        }
+        return `${v.type} ${v.name} = ${v.value}`;
+    });
+    const parts = [...varLines];
+    if (funcs.trim()) {
+        parts.push('', funcs.trim());
+    }
+    const logic = parts.join('\n').trim();
+    if (!logic) return '';
+
+    return `story-logic: |\n  ${logic.replace(/\n/g, '\n  ')}`;
+}
+
+/**
+ * Updates an existing global variable's value in the frontmatter string.
+ */
+export function updateGlobalVariableInFM(
+    fm: string,
+    varName: string,
+    newValue: string,
+): string {
+    const parsed = parseGlobalVariables(fm);
+    const updatedVars = parsed.vars.map((v) =>
+        v.name === varName ? { ...v, value: newValue } : v,
+    );
+    const newLogicBlock = serializeGlobalVariables(updatedVars, parsed.funcs);
+
+    if (fm.includes('story-logic: |')) {
+        return fm.replace(
+            /story-logic: \|[\s\S]+?(?=\n[a-z0-9-]+:|$)/,
+            newLogicBlock,
+        );
+    }
+    return fm;
+}
+
+/**
+ * Adds a new global variable declaration to the frontmatter string.
+ */
+export function addGlobalVariableToFM(
+    fm: string,
+    varName: string,
+    type: VariableType = 'VAR',
+    value: string = '0',
+): string {
+    const parsed = parseGlobalVariables(fm);
+    // Avoid duplicates
+    if (parsed.vars.some((v) => v.name === varName)) return fm;
+
+    const updatedVars = [...parsed.vars, { type, name: varName, value }];
+    const newLogicBlock = serializeGlobalVariables(updatedVars, parsed.funcs);
+
+    if (fm.includes('story-logic: |')) {
+        return fm.replace(
+            /story-logic: \|[\s\S]+?(?=\n[a-z0-9-]+:|$)/,
+            newLogicBlock,
+        );
+    } else {
+        // Append logic-block before the closing --- or at the end
+        const block = `---\n${newLogicBlock}\n---`;
+        if (fm.trim() === '' || fm.trim() === '---') return block;
+        return fm.replace(/(?=\n---)/, `\n${newLogicBlock}`);
+    }
 }
