@@ -35,9 +35,7 @@ import {
 import { onVaultEvent } from 'src/stores/plugin/subscriptions/on-vault-event';
 import { onWorkspaceEvent } from 'src/stores/plugin/subscriptions/on-workspace-event';
 import { SettingsActions } from 'src/stores/settings/settings-store-actions';
-import { PropertyEditorView, PROPERTY_EDITOR_VIEW_TYPE } from 'src/view/PropertyEditorView';
 import { InkPresentationView, INK_PRESENTATION_VIEW_TYPE } from 'src/view/InkPresentationView';
-import { InkBlockEditorView, INK_BLOCK_EDITOR_VIEW_TYPE } from 'src/view/InkBlockEditorView';
 
 export type SettingsStore = Store<Settings, SettingsActions>;
 export type PluginStore = Store<PluginState, PluginStoreActions>;
@@ -63,16 +61,8 @@ export default class Lineage extends Plugin {
             (leaf) => new LineageView(leaf, this),
         );
         this.registerView(
-            PROPERTY_EDITOR_VIEW_TYPE,
-            (leaf) => new PropertyEditorView(leaf, this)
-        );
-        this.registerView(
             INK_PRESENTATION_VIEW_TYPE,
             (leaf) => new InkPresentationView(leaf, this)
-        );
-        this.registerView(
-            INK_BLOCK_EDITOR_VIEW_TYPE,
-            (leaf) => new InkBlockEditorView(leaf, this)
         );
         addCommands(this);
         this.registerPatches();
@@ -131,23 +121,7 @@ export default class Lineage extends Plugin {
                 else createLineageDocument(this);
             },
         );
-        this.addRibbonIcon(
-            'layout-grid',
-            'Open Ink Block Editor',
-            () => {
-                const { workspace } = this.app;
-                let leaf = workspace.getLeavesOfType(INK_BLOCK_EDITOR_VIEW_TYPE)[0];
-                if (!leaf) {
-                    const rightLeaf = workspace.getRightLeaf(false);
-                    if (rightLeaf) {
-                        rightLeaf.setViewState({ type: INK_BLOCK_EDITOR_VIEW_TYPE, active: true });
-                        workspace.revealLeaf(rightLeaf);
-                    }
-                } else {
-                    workspace.revealLeaf(leaf);
-                }
-            }
-        );
+
     }
 
     onunload() {

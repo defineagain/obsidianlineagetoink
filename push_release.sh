@@ -35,11 +35,13 @@ if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-NOTES="### Beat Aggregation & Narrative Alignment
-- **Beat Aggregation**: Narrative lines are now grouped into logical cards during import/export.
-- **Sibling Gathers**: Corrected weaver hierarchy to prevent 'staircase effect' and ensure re-convergence.
-- **Story-Logic Sync**: Fixed global variable/function preservation in frontmatter.
-- **Choice Protection**: Automatic \`-> END\` for choice nodes without children."
+NOTES="### Ink Architecture Unification
+- **Unified Variable Storage**: Eliminated fragmented .inkconfig sidecar files; all variables now live in frontmatter story-logic.
+- **4-Tab Sidebar**: Pinned, Recent, Story Logic (structured VAR/CONST editor), Ink Tools (topology buttons, validation, content editor).
+- **Variable Badges**: Cards referencing {variable_name} display read-only accent-colored chips in the viewport.
+- **Beat Aggregation**: Prose lines correctly aggregate into parent structural nodes during import.
+- **Export Pipeline Fix**: story-logic regex handles edge cases (--- fence, underscore keys).
+- **Dead Code Removal**: Removed standalone PropertyEditorView and InkBlockEditorView panes."
 
 # Determine which files to include based on existence
 FILES="main.js manifest.json"
@@ -48,7 +50,7 @@ if [ -f styles.css ]; then
 fi
 
 gh release create "$VERSION" $FILES \
-    --title "$VERSION - Beat Aggregation Alignment" \
+    --title "$VERSION - Ink Architecture Unification" \
     --notes "$NOTES"
 
 if [ $? -eq 0 ]; then

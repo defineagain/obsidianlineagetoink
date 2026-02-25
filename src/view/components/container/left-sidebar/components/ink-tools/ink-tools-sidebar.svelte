@@ -1,17 +1,13 @@
 <script lang="ts">
-    import { onMount, onDestroy } from 'svelte';
-    import Lineage from 'src/main';
-    import { LineageView } from 'src/view/view';
-    import { getActiveLineageView } from 'src/obsidian/commands/helpers/get-active-lineage-view';
-    import { slugify } from 'src/helpers/slugify';
+    import { getView } from 'src/view/components/container/context';
+    import { contentStore } from 'src/stores/document/derived/content-store';
+    import { debounce } from 'obsidian';
     import { Info } from 'lucide-svelte';
     import { slide } from 'svelte/transition';
-    import { TopologyRulesModal } from '../../modals/topology-rules-modal/topology-rules-modal';
     import {
         validateNodeTopology,
         type ValidationResult,
     } from 'src/lib/ink-exporter/topology-validator';
-    import { SelectParentModal } from '../../modals/select-parent-modal/select-parent-modal';
     import {
         reformatBlock,
         type BlockType,
@@ -19,62 +15,30 @@
     import { TOPOLOGY_RULES_MD } from 'src/lib/ink-exporter/topology-rules-content';
     import { MarkdownRenderer } from 'obsidian';
 
-    export let plugin: Lineage;
-    export let view: any;
+    const view = getView();
 
-    let activeView: LineageView | null = null;
     let activeNodeId: string | null = null;
     let nodeContent: string = '';
 
-    const unsubscribeViewStore = () => {
-        if (viewStoreUnsubscribe) {
-            viewStoreUnsubscribe();
-            viewStoreUnsubscribe = null;
+    const unsub = view.viewStore.subscribe((state) => {
+        activeNodeId = state.document.activeNode;
+        if (activeNodeId) {
+            const docState = view.documentStore.getValue();
+            nodeContent =
+                docState.document.content[activeNodeId]?.content || '';
+        } else {
+            nodeContent = '';
         }
-    };
-
-    let viewStoreUnsubscribe: (() => void) | null = null;
-
-    const updateActiveView = () => {
-        const view = getActiveLineageView(plugin) || plugin.lastActiveView;
-        if (view !== activeView) {
-            unsubscribeViewStore();
-            activeView = view;
-            if (activeView) {
-                viewStoreUnsubscribe = activeView.viewStore.subscribe(
-                    (state) => {
-                        activeNodeId = state.document.activeNode;
-                        if (activeNodeId) {
-                            const docState =
-                                activeView!.documentStore.getValue();
-                            nodeContent =
-                                docState.document.content[activeNodeId]
-                                    ?.content || '';
-                        } else {
-                            nodeContent = '';
-                        }
-                    },
-                );
-            } else {
-                activeNodeId = null;
-                nodeContent = '';
-            }
-        }
-    };
-
-    onMount(() => {
-        updateActiveView();
-        plugin.app.workspace.on('active-leaf-change', updateActiveView);
     });
 
+    import { onDestroy } from 'svelte';
     onDestroy(() => {
-        unsubscribeViewStore();
-        plugin.app.workspace.off('active-leaf-change', updateActiveView);
+        unsub();
     });
 
     function updateContent(newContent: string) {
-        if (!activeView || !activeNodeId) return;
-        activeView.documentStore.dispatch({
+        if (!activeNodeId) return;
+        view.documentStore.dispatch({
             type: 'document/update-node-content',
             payload: {
                 nodeId: activeNodeId,
@@ -98,27 +62,27 @@
     const HELP_TEXT: Record<string, { title: string; desc: string }> = {
         knot: {
             title: 'Knot (===)',
-            desc: 'The largest unit of content in Ink. Think of it as a Chapter or a major Scene. Every card sequence should ideally start with a Knot.',
+            desc: 'The largest unit of content in Ink. Think of it as a Chapter or a major Scene.',
         },
         stitch: {
             title: 'Stitch (=)',
-            desc: 'Sub-sections within a Knot. Use these to organize smaller branches or sequences inside a single scene.',
+            desc: 'Sub-sections within a Knot. Use these to organize smaller branches or sequences.',
         },
         choice: {
             title: 'Choice (*)',
-            desc: 'A standard branching path. Once selected by the player, it usually disappears from the list of options.',
+            desc: 'A standard branching path. Once selected by the player, it disappears.',
         },
         sticky: {
             title: 'Sticky Choice (+)',
-            desc: 'A choice that persists. It remains available even after the player has picked it once.',
+            desc: 'A choice that persists even after being picked.',
         },
         gather: {
             title: 'Gather (-)',
-            desc: 'Convergence points. Use these to bring multiple branching paths back together into a single flow.',
+            desc: 'Convergence points. Brings branching paths back together.',
         },
         divert: {
             title: 'Divert (->)',
-            desc: 'A jump or link. Use this to move the story flow from one card/branch to another specific Knot or Stitch.',
+            desc: 'A jump/link. Moves the story flow to another Knot or Stitch.',
         },
     };
 
@@ -127,7 +91,6 @@
         showRules = !showRules;
     };
 
-    /** @type {HTMLElement} */
     let rulesContainer: HTMLElement;
     $: if (showRules && rulesContainer) {
         rulesContainer.empty();
@@ -141,10 +104,10 @@
 
     let validationResult: ValidationResult | null = null;
     const runValidation = () => {
-        if (!activeView || !activeNodeId) return;
-        const state = activeView.documentStore.getValue();
-        const depth = state.document.columns.findIndex((c) =>
-            c.groups.some((g) => g.nodes.includes(activeNodeId!)),
+        if (!activeNodeId) return;
+        const state = view.documentStore.getValue();
+        const depth = state.document.columns.findIndex((c: any) =>
+            c.groups.some((g: any) => g.nodes.includes(activeNodeId!)),
         );
         validationResult = validateNodeTopology(nodeContent, depth);
     };
@@ -152,36 +115,10 @@
     $: if (nodeContent) {
         validationResult = null;
     }
-
-    const makeChildOf = () => {
-        if (!activeView || !activeNodeId) return;
-        new SelectParentModal(
-            plugin.app,
-            activeView,
-            activeNodeId,
-            (targetId) => {
-                activeView!.documentStore.dispatch({
-                    type: 'document/drop-node',
-                    payload: {
-                        droppedNodeId: activeNodeId!,
-                        targetNodeId: targetId,
-                        position: 'right',
-                    },
-                });
-            },
-        ).open();
-    };
 </script>
 
-<div class="lineage-ink-block-editor">
+<div class="ink-tools-container">
     {#if activeNodeId}
-        <div class="editor-header">
-            <h4>Ink Block Editor</h4>
-            <div class="editor-subtitle">
-                Editing card for: {activeView?.getDisplayText() || 'Unknown'}
-            </div>
-        </div>
-
         <div class="block-group">
             <div class="group-label">Topologies</div>
             <div class="button-grid">
@@ -288,7 +225,7 @@
         {/if}
 
         <div class="preview-area">
-            <div class="group-label">Card Content Editor</div>
+            <div class="group-label">Card Content</div>
             <textarea
                 class="content-editor"
                 bind:value={nodeContent}
@@ -307,7 +244,7 @@
             >
                 <div class="val-header">
                     <strong
-                        >Topology Check: {validationResult.type.toUpperCase()}</strong
+                        >Topology: {validationResult.type.toUpperCase()}</strong
                     >
                 </div>
                 <div class="val-message">{validationResult.message}</div>
@@ -317,9 +254,6 @@
         <div class="footer-actions">
             <button class="mod-cta" on:mousedown|preventDefault={runValidation}>
                 Parse & Check
-            </button>
-            <button on:mousedown|preventDefault={makeChildOf}>
-                Make Child of...
             </button>
             <button
                 class="rule-toggle-btn"
@@ -339,23 +273,18 @@
         </div>
     {:else}
         <div class="empty-state">
-            <p>Select a card in a Lineage view to assign Ink blocks.</p>
+            <p>Select a card to use Ink tools.</p>
         </div>
     {/if}
 </div>
 
 <style>
-    .lineage-ink-block-editor {
-        padding: 1rem;
+    .ink-tools-container {
+        padding: 0 10px;
         display: flex;
         flex-direction: column;
-        gap: 1.5rem;
-    }
-
-    .editor-subtitle {
-        font-size: 0.8em;
-        color: var(--text-muted);
-        margin-top: -1rem;
+        gap: 1rem;
+        overflow-y: auto;
     }
 
     .block-group {
@@ -420,7 +349,6 @@
         border-left: 3px solid var(--color-accent);
         padding: 0.75rem;
         border-radius: var(--radius-s);
-        margin: 0.5rem 0;
         font-size: 0.85em;
     }
 
@@ -436,14 +364,13 @@
     }
 
     .preview-area {
-        margin-top: 1rem;
-        padding-top: 1rem;
+        padding-top: 0.5rem;
         border-top: 1px solid var(--background-modifier-border);
     }
 
     .content-editor {
         width: 100%;
-        min-height: 150px;
+        min-height: 120px;
         font-family: var(--font-monospace);
         font-size: 0.85em;
         background: var(--background-secondary);
@@ -490,8 +417,7 @@
     }
 
     .footer-actions {
-        margin-top: auto;
-        padding-top: 1rem;
+        padding-top: 0.5rem;
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
@@ -514,17 +440,16 @@
     }
 
     .topology-rules-inline {
-        max-height: 250px;
+        max-height: 200px;
         overflow-y: auto;
         background: var(--background-primary);
         border: 1px solid var(--background-modifier-border);
-        padding: 1rem;
+        padding: 0.75rem;
         border-radius: var(--radius-s);
         font-size: 0.85em;
         line-height: 1.5;
     }
 
-    /* Target headers inside the rendered markdown */
     .topology-rules-inline :global(h1),
     .topology-rules-inline :global(h2) {
         margin-top: 0;

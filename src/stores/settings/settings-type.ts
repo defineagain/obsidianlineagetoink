@@ -37,7 +37,7 @@ export type DocumentPreferences = {
     } | null;
 };
 
-export type LeftSidebarTab = 'pinned-cards' | 'recent-cards' | 'parameters';
+export type LeftSidebarTab = 'pinned-cards' | 'recent-cards' | 'parameters' | 'ink-tools';
 
 export type RulesTab = 'global-rules' | 'document-rules';
 

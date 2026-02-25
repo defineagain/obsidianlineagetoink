@@ -1,6 +1,6 @@
 {
     "name": "obsidianlineagetoink",
-    "version": "0.4.8",
+    "version": "0.5.0",
     "description": "Export Lineage trees to Inkle's Ink format",
     "scripts": {
         "dev": "node esbuild.config.mjs",

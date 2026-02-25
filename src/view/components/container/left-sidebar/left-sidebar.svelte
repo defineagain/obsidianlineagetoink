@@ -9,6 +9,7 @@
     import PinnedCards from 'src/view/components/container/left-sidebar/components/pinned-cards/pinned-cards-sidebar.svelte';
     import RecentCards from 'src/view/components/container/left-sidebar/components/recent-cards/recent-cards.svelte';
     import Parameters from './components/parameters/parameters-sidebar.svelte';
+    import InkTools from './components/ink-tools/ink-tools-sidebar.svelte';
     import { limitPreviewHeightStore } from 'src/stores/settings/derived/limit-preview-height-store';
 
     const MIN_WIDTH = 250;
@@ -87,6 +88,8 @@
         <RecentCards />
     {:else if $activeTab === 'parameters'}
         <Parameters />
+    {:else if $activeTab === 'ink-tools'}
+        <InkTools />
     {/if}
 
 </div>

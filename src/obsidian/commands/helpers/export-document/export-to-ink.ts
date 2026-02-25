@@ -27,8 +27,8 @@ export const exportToInk = async (view: LineageView) => {
         const tree = htmlCommentToJson(body);
         
         // Extract story-logic from frontmatter
-        const logicMatch = frontmatter.match(/story-logic: \|([\s\S]+?)(?=\n[a-z0-9-]+:|$)/);
-        const logic = logicMatch ? logicMatch[1].split('\n').map(line => line.replace(/^  /, '')).join('\n').trim() : "";
+        const logicMatch = frontmatter.match(/story-logic: \|([\s\S]+?)(?=\n[a-z0-9_-]+:|\n---|\s*$)/);
+        const logic = logicMatch ? logicMatch[1].split('\n').map((line: string) => line.replace(/^  /, '')).join('\n').trim() : "";
 
         let inkSource = astToInk(tree);
         if (logic) {

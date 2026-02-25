@@ -47,6 +47,10 @@ export function inkToAst(ink: string): { tree: TreeNode[], logic: string } {
         }
 
         if (trimmed.match(/^=+\s*([^=].*)$/)) inLogicBlock = false;
+        if (inLogicBlock) {
+            storyLogic += line + "\n";
+            continue;
+        }
 
         // 2. Structural Controls (Hard Breaks)
         const knotMatch = trimmed.match(/^===\s*(.*?)\s*===/);
@@ -125,6 +129,9 @@ export function inkToAst(ink: string): { tree: TreeNode[], logic: string } {
             const node: TreeNode = { content: translateDiverts(line), children: [] };
             roots.push(node);
             currentNode = node;
+        } else if (!trimmed && currentNode) {
+            // Blank line within a beat: preserve paragraph spacing
+            currentNode.content += "\n";
         }
     }
 

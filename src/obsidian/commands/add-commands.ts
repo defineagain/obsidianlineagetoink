@@ -8,7 +8,7 @@ import { getActiveFile } from 'src/obsidian/commands/helpers/get-active-file';
 import { createLineageDocument } from 'src/obsidian/events/workspace/effects/create-lineage-document';
 import { getActiveLineageView } from 'src/obsidian/commands/helpers/get-active-lineage-view';
 import { openSplitNodeModal } from 'src/view/modals/split-node-modal/open-split-node-modal';
-import { PROPERTY_EDITOR_VIEW_TYPE } from 'src/view/PropertyEditorView';
+
 import { INK_PRESENTATION_VIEW_TYPE } from 'src/view/InkPresentationView';
 import { isEditing } from 'src/view/actions/keyboard-shortcuts/helpers/commands/commands/helpers/is-editing';
 import { copyLinkToBlock } from 'src/view/actions/context-menu/card-context-menu/helpers/copy-link-to-block';
@@ -41,24 +41,7 @@ const createCommands = (plugin: Lineage) => {
         },
     });
 
-    commands.push({
-        name: lang.cm_open_property_editor,
-        icon: 'settings',
-        checkCallback: (checking) => {
-            if (checking) return true;
-            const { workspace } = plugin.app;
-            let leaf = workspace.getLeavesOfType(PROPERTY_EDITOR_VIEW_TYPE)[0];
-            if (!leaf) {
-                const rightLeaf = workspace.getRightLeaf(false);
-                if (rightLeaf) {
-                    rightLeaf.setViewState({ type: PROPERTY_EDITOR_VIEW_TYPE, active: true });
-                    workspace.revealLeaf(rightLeaf);
-                }
-            } else {
-                workspace.revealLeaf(leaf);
-            }
-        },
-    });
+
 
     commands.push({
         name: lang.cm_open_presentation_view,

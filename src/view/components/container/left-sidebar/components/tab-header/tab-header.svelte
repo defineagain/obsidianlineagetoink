@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Clock, Pin, Scroll } from 'lucide-svelte';
+    import { Clock, Pin, Scroll, Wrench } from 'lucide-svelte';
     import ClickableIcon from './components/clickable-icon.svelte';
     import { LeftSidebarActiveTabStore } from '../../../../../../stores/settings/derived/view-settings-store';
     import { LeftSidebarTab } from '../../../../../../stores/settings/settings-type';
@@ -39,6 +39,13 @@
             onClick={() => setActiveTab("parameters")}
         >
             <Scroll class="svg-icon" />
+        </ClickableIcon>
+        <ClickableIcon
+            isActive={$activeTab==="ink-tools"}
+            label="Ink Tools"
+            onClick={() => setActiveTab("ink-tools")}
+        >
+            <Wrench class="svg-icon" />
         </ClickableIcon>
     </div>
 </div>
