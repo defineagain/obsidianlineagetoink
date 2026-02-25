@@ -35,11 +35,12 @@ if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-NOTES="### Unified Ink Sidebar (v0.6.2)
-- **Tabbing Interface**: The Ink Block Editor and Ink Player (Presentation) are now unified into a single sidebar view with tabs.
-- **Workflow Persistence**: Switching between editing and previewing no longer replaces the sidebar leaf, preventing the pane from \"disappearing\".
-- **Command-Aware Activation**: Running the \"Open Presentation View\" command automatically switches the unified sidebar to the Player tab.
-- **Ribbon Integration**: The ribbon icon now opens the unified sidebar and defaults to the Editor tab."
+NOTES="### Premium Ink Player (v0.6.3)
+- **Compilation Fix**: Resolved the issue where global variables and logic caused \"red box\" errors.
+- **Inky-Style UI**: Implemented a vertical scrollback history for a better storytelling experience.
+- **Tag Engine**: Added support for \# image: tags to render story assets directly in the player.
+- **Smooth Navigation**: Added micro-animations for choices and content transitions.
+- **Improved Error Feedback**: Detailed error messages now appear instead of generic failures."
 
 # Determine which files to include based on existence
 FILES="main.js manifest.json"
@@ -48,7 +49,9 @@ if [ -f styles.css ]; then
 fi
 
 # Determine title based on version
-if [[ "$VERSION" == "0.6.2" ]]; then
+if [[ "$VERSION" == "0.6.3" ]]; then
+    TITLE="v0.6.3 - Premium Ink Player"
+elif [[ "$VERSION" == "0.6.2" ]]; then
     TITLE="v0.6.2 - Unified Ink Sidebar"
 elif [[ "$VERSION" == "0.6.1" ]]; then
     TITLE="v0.6.1 - Ink Import/Export Fidelity"

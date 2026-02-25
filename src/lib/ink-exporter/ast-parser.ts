@@ -62,8 +62,15 @@ export const astToInk = (nodes: TreeNode[], depth: number = 0): string => {
         const isChoiceOrGather = hasManualMarker || (isWeaveDepth && depth > 1);
 
         if (depth === 0) {
-            // Column 1 -> Knot
-            if (trimmed.startsWith('===')) {
+            // Column 1 -> Knot OR Global Preamble
+            const isGlobalLogic = trimmed.startsWith('VAR ') || 
+                                 trimmed.startsWith('CONST ') || 
+                                 trimmed.startsWith('LIST ') || 
+                                 trimmed.startsWith('EXTERNAL ') || 
+                                 trimmed.startsWith('== function ') ||
+                                 trimmed.startsWith('//');
+
+            if (trimmed.startsWith('===') || isGlobalLogic) {
                 result += `\n${trimmed}\n`;
             } else {
                 const name = getInkIdentifier(content, `knot_${i}`);
