@@ -35,10 +35,13 @@ if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-NOTES="### Sidebar & Ribbon Fixes
-- **Sidebar visible by default**: Left sidebar opens automatically when entering Lineage view.
-- **Ribbon icon**: layout-list icon toggles Ink sidebar (only when Lineage view is active).
-- **Fixed icon conflict**: No longer conflicts with Obsidian native panel-left sidebar toggle."
+NOTES="### Ink Architecture Unification + Right Pane Restore
+- **Unified Variable Storage**: All variables now live in frontmatter story-logic (no .inkconfig sidecar).
+- **4-Tab Sidebar**: Pinned, Recent, Story Logic (structured VAR/CONST editor), Ink Tools.
+- **Variable Badges**: Cards referencing {variable_name} display read-only chips.
+- **Beat Aggregation**: Prose lines correctly aggregate into parent structural nodes during import.
+- **Right Pane Restored**: InkBlockEditorView opens as a native Obsidian right pane via layout-grid ribbon icon.
+- **Dead Code Removal**: Removed standalone PropertyEditorView."
 
 # Determine which files to include based on existence
 FILES="main.js manifest.json"
@@ -47,7 +50,7 @@ if [ -f styles.css ]; then
 fi
 
 gh release create "$VERSION" $FILES \
-    --title "$VERSION - Sidebar & Ribbon Fixes" \
+    --title "$VERSION - Ink Architecture Unification" \
     --notes "$NOTES"
 
 if [ $? -eq 0 ]; then
