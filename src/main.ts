@@ -121,6 +121,13 @@ export default class Lineage extends Plugin {
                 else createLineageDocument(this);
             },
         );
+        this.addRibbonIcon(
+            'panel-left',
+            'Toggle Ink Sidebar',
+            () => {
+                this.settings.dispatch({ type: 'view/left-sidebar/toggle' });
+            },
+        );
 
     }
 
