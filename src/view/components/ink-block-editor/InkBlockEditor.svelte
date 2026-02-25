@@ -14,6 +14,7 @@
     import { SelectParentModal } from '../../modals/select-parent-modal/select-parent-modal';
     import {
         reformatBlock,
+        detectBlockType,
         type BlockType,
     } from 'src/lib/ink-exporter/block-formatter';
     import { TOPOLOGY_RULES_MD } from 'src/lib/ink-exporter/topology-rules-content';
@@ -84,9 +85,30 @@
         });
     }
 
+    // Reactive taxonomy detection
+    $: currentType = detectBlockType(nodeContent);
+
+    // Extract variable references from card content
+    $: variableRefs = (() => {
+        const text = nodeContent || '';
+        const refs: { fullMatch: string; varName: string; expression: string }[] = [];
+        const regex = /\{([^}]+)\}/g;
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            const inner = match[1];
+            const varName = inner.split(':')[0].split('|')[0].split('>')[0].split('<')[0].split('!')[0].trim();
+            if (varName && /^[a-zA-Z_]\w*$/.test(varName)) {
+                refs.push({ fullMatch: match[0], varName, expression: inner });
+            }
+        }
+        return refs;
+    })();
+
     function applyFormatting(targetType: BlockType) {
         if (!activeNodeId) return;
-        const newContent = reformatBlock(nodeContent, targetType);
+        // Toggle: clicking the active type reverts to plain
+        const effective = currentType === targetType ? 'plain' : targetType;
+        const newContent = reformatBlock(nodeContent, effective);
         updateContent(newContent);
     }
 
@@ -187,7 +209,8 @@
             <div class="button-grid">
                 <div class="button-with-help">
                     <button
-                        class="mod-cta"
+                        class="topology-btn"
+                        class:is-active={currentType === 'knot'}
                         on:mousedown|preventDefault={() =>
                             applyFormatting('knot')}
                         aria-label="Convert to Knot">Knot</button
@@ -202,7 +225,8 @@
                 </div>
                 <div class="button-with-help">
                     <button
-                        class="mod-cta"
+                        class="topology-btn"
+                        class:is-active={currentType === 'stitch'}
                         on:mousedown|preventDefault={() =>
                             applyFormatting('stitch')}
                         aria-label="Convert to Stitch">Stitch</button
@@ -223,6 +247,8 @@
             <div class="button-grid">
                 <div class="button-with-help">
                     <button
+                        class="topology-btn"
+                        class:is-active={currentType === 'choice'}
                         on:mousedown|preventDefault={() =>
                             applyFormatting('choice')}
                         aria-label="Single-use Choice">Choice</button
@@ -237,6 +263,8 @@
                 </div>
                 <div class="button-with-help">
                     <button
+                        class="topology-btn"
+                        class:is-active={currentType === 'sticky'}
                         on:mousedown|preventDefault={() =>
                             applyFormatting('sticky')}
                         aria-label="Sticky Choice">Sticky</button
@@ -251,6 +279,8 @@
                 </div>
                 <div class="button-with-help">
                     <button
+                        class="topology-btn"
+                        class:is-active={currentType === 'gather'}
                         on:mousedown|preventDefault={() =>
                             applyFormatting('gather')}
                         aria-label="Gather point">Gather</button
@@ -265,6 +295,8 @@
                 </div>
                 <div class="button-with-help">
                     <button
+                        class="topology-btn"
+                        class:is-active={currentType === 'divert'}
                         on:mousedown|preventDefault={() =>
                             applyFormatting('divert')}
                         aria-label="Divert to knot">Divert</button
@@ -284,6 +316,30 @@
             <div class="help-panel" transition:slide={{ duration: 200 }}>
                 <div class="help-title">{HELP_TEXT[activeHelp].title}</div>
                 <div class="help-desc">{HELP_TEXT[activeHelp].desc}</div>
+            </div>
+        {/if}
+
+        {#if variableRefs.length > 0}
+            <div class="block-group">
+                <div class="group-label">Variable References</div>
+                <div class="var-refs-list">
+                    {#each variableRefs as ref}
+                        <div class="var-ref-row">
+                            <span class="var-ref-badge">{ref.varName}</span>
+                            <input
+                                type="text"
+                                class="var-ref-input"
+                                value={ref.expression}
+                                on:change={(e) => {
+                                    const newExpr = e.currentTarget.value;
+                                    const updated = nodeContent.replace(ref.fullMatch, `{${newExpr}}`);
+                                    updateContent(updated);
+                                }}
+                                on:click|stopPropagation
+                            />
+                        </div>
+                    {/each}
+                </div>
             </div>
         {/if}
 
@@ -536,5 +592,61 @@
         color: var(--text-muted);
         text-align: center;
         margin-top: 2rem;
+    }
+
+    /* Taxonomy active state */
+    .topology-btn {
+        transition: all 0.15s ease;
+    }
+
+    .topology-btn.is-active {
+        background: var(--color-accent);
+        color: white;
+        border-color: var(--color-accent);
+        font-weight: bold;
+    }
+
+    /* Variable references */
+    .var-refs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .var-ref-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .var-ref-badge {
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.75em;
+        font-family: var(--font-monospace);
+        background: rgba(var(--color-accent-rgb, 71, 135, 235), 0.15);
+        color: var(--color-accent);
+        padding: 2px 8px;
+        border-radius: 10px;
+        border: 1px solid rgba(var(--color-accent-rgb, 71, 135, 235), 0.3);
+        min-width: 80px;
+        justify-content: center;
+        white-space: nowrap;
+    }
+
+    .var-ref-input {
+        flex: 1;
+        font-family: var(--font-monospace);
+        font-size: 0.8em;
+        background: var(--background-secondary);
+        border: 1px solid var(--background-modifier-border);
+        color: var(--text-normal);
+        padding: 3px 8px;
+        border-radius: var(--radius-s);
+    }
+
+    .var-ref-input:focus {
+        border-color: var(--color-accent);
+        outline: none;
     }
 </style>

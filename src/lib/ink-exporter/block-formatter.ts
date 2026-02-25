@@ -3,6 +3,23 @@ import { slugify } from '../../helpers/slugify';
 export type BlockType = 'knot' | 'stitch' | 'choice' | 'sticky' | 'gather' | 'divert' | 'plain';
 
 /**
+ * Detect the current block type from content markers.
+ * Inverse of reformatBlock — used for taxonomy state feedback.
+ */
+export function detectBlockType(content: string): BlockType {
+    const trimmed = content.trim();
+    if (/^===\s/.test(trimmed)) return 'knot';
+    if (/^=\s[^=]/.test(trimmed)) return 'stitch';
+    if (/^#\s/.test(trimmed)) return 'knot';   // Markdown-style knot header
+    if (/^##\s/.test(trimmed)) return 'stitch'; // Markdown-style stitch header
+    if (/^\*\s/.test(trimmed)) return 'choice';
+    if (/^\+\s/.test(trimmed)) return 'sticky';
+    if (/^->/.test(trimmed)) return 'divert';
+    if (/^-\s/.test(trimmed)) return 'gather';
+    return 'plain';
+}
+
+/**
  * Radical Reset Strategy:
  * 1. Split content into lines.
  * 2. Strip leading Knot/Stitch header lines entirely.
