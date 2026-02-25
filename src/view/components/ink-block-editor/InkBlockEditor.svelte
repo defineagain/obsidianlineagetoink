@@ -23,6 +23,7 @@
         parseGlobalVariables,
         updateGlobalVariableInFM,
         addGlobalVariableToFM,
+        aggregateAllUsedVariables,
         type VariableRef,
         type VariableValidationResult,
         type InkVariable,
@@ -116,6 +117,13 @@
 
     $: globalNames = globalVars.map((v) => v.name.replace(/^LIST\s+/, ''));
 
+    // Board-wide aggregation: find all variables used in any card
+    $: allBoardVariables = (() => {
+        if (!activeView) return [];
+        const state = activeView.documentStore.getValue();
+        return aggregateAllUsedVariables(state.document.content);
+    })();
+
     $: variableRefs = (() => {
         const refs = extractLocalVariables(nodeContent);
         return refs.map((ref) => ({
@@ -124,18 +132,50 @@
         }));
     })();
 
-    $: undeclaredVars = (() => {
-        const uniqueLocalNames = [
-            ...new Set(variableRefs.map((r) => r.varName)),
-        ];
-        return uniqueLocalNames.filter((name) => !globalNames.includes(name));
+    // Unified list: combine declared globals + undeclared variables found anywhere on the board
+    $: unifiedRegistry = (() => {
+        // 1. Start with everything declared in logic
+        const registry = globalVars.map(v => ({
+            name: v.name,
+            value: v.value,
+            type: v.type,
+            isDeclared: true,
+            isUsedOnBoard: allBoardVariables.includes(v.name.replace(/^LIST\s+/, '')),
+            isUsedInCurrentCard: variableRefs.some(ref => ref.varName === v.name.replace(/^LIST\s+/, ''))
+        }));
+
+        // 2. Add variables found on board but NOT in logic
+        const undeclared = allBoardVariables.filter(name => !globalNames.includes(name));
+        for (const name of undeclared) {
+            registry.push({
+                name,
+                value: '?',
+                type: 'VAR',
+                isDeclared: false,
+                isUsedOnBoard: true,
+                isUsedInCurrentCard: variableRefs.some(ref => ref.varName === name)
+            });
+        }
+        
+        // Sort: Active in card first, then declared, then name
+        return registry.sort((a, b) => {
+            if (a.isUsedInCurrentCard !== b.isUsedInCurrentCard) return a.isUsedInCurrentCard ? -1 : 1;
+            if (a.isDeclared !== b.isDeclared) return a.isDeclared ? -1 : 1;
+            return a.name.localeCompare(b.name);
+        });
     })();
 
     function updateGlobalVar(varName: string, newValue: string) {
         if (!activeView) return;
         const state = activeView.documentStore.getValue();
         const currentFM = state.file.frontmatter;
-        const newFM = updateGlobalVariableInFM(currentFM, varName, newValue);
+        
+        // If not declared yet, add it. Otherwise update it.
+        const isDeclared = globalNames.includes(varName);
+        const newFM = isDeclared 
+            ? updateGlobalVariableInFM(currentFM, varName, newValue)
+            : addGlobalVariableToFM(currentFM, varName, 'VAR', newValue);
+
         if (newFM !== currentFM) {
             activeView.documentStore.dispatch({
                 type: 'document/file/update-frontmatter',
@@ -360,49 +400,38 @@
         {/if}
 
         <div class="variable-section">
-            <div class="group-label">Global Variable Registry</div>
+            <div class="group-label">Unified Variable Registry</div>
             <div class="variable-refs">
-                {#each globalVars as v}
-                    {@const isLocal = variableRefs.some(
-                        (ref) => ref.varName === v.name.replace(/^LIST\s+/, ''),
-                    )}
-                    <div class="variable-ref-row global-row" class:is-local={isLocal}>
+                {#each unifiedRegistry as v}
+                    <div 
+                        class="variable-ref-row global-row" 
+                        class:is-active-card={v.isUsedInCurrentCard}
+                        class:is-undeclared={!v.isDeclared}
+                    >
                         <div class="var-badge-container">
-                            <span class="var-badge">{v.name}</span>
-                            {#if isLocal}
+                            <span class="var-badge" title={v.isDeclared ? 'Declared in Story Logic' : 'Found in cards but not declared'}>
+                                {v.name}
+                            </span>
+                            {#if v.isUsedInCurrentCard}
                                 <span class="local-indicator" title="Present in this card">●</span>
+                            {/if}
+                            {#if !v.isDeclared}
+                                <span class="undeclared-warning" title="Undeclared variable">!</span>
                             {/if}
                         </div>
                         <input
                             type="text"
                             class="var-ref-input global-val-input"
                             value={v.value}
+                            placeholder={v.isDeclared ? '' : 'Init value...'}
                             on:change={(e) => updateGlobalVar(v.name, e.currentTarget.value)}
                             on:click|stopPropagation
                         />
                     </div>
                 {/each}
 
-                {#each undeclaredVars as pendingName}
-                    <div class="variable-ref-row val-warning">
-                        <div class="var-badge-container">
-                            <span class="var-badge">{pendingName}</span>
-                            <span class="var-status-icon">?</span>
-                        </div>
-                        <div class="pending-actions">
-                            <span class="pending-label">Undeclared</span>
-                            <button
-                                class="add-global-btn"
-                                on:click={() => addPendingVar(pendingName)}
-                            >
-                                + Add
-                            </button>
-                        </div>
-                    </div>
-                {/each}
-
-                {#if globalVars.length === 0 && undeclaredVars.length === 0}
-                    <div class="empty-state">No variables defined or used.</div>
+                {#if unifiedRegistry.length === 0}
+                    <div class="empty-state">No variables found in storyboard.</div>
                 {/if}
             </div>
         </div>
@@ -702,9 +731,14 @@
         transition: all 0.1s ease-in-out;
     }
 
-    .variable-ref-row.global-row.is-local {
+    .variable-ref-row.global-row.is-active-card {
         background: rgba(var(--interactive-accent-rgb), 0.1);
         border-left: 2px solid var(--interactive-accent);
+    }
+
+    .variable-ref-row.is-undeclared {
+        background: rgba(var(--text-warning-rgb), 0.05);
+        border-left: 2px dashed var(--text-warning);
     }
 
     .local-indicator {
@@ -713,40 +747,17 @@
         margin-left: 2px;
     }
 
+    .undeclared-warning {
+        color: var(--text-warning);
+        font-weight: bold;
+        font-size: 0.8em;
+        margin-left: 2px;
+    }
+
     .global-val-input {
         text-align: right;
         color: var(--text-muted);
         font-weight: bold;
-    }
-
-    .pending-actions {
-        flex: 1;
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .pending-label {
-        font-size: 0.7em;
-        color: var(--text-warning);
-        text-transform: uppercase;
-        font-weight: bold;
-    }
-
-    .add-global-btn {
-        font-size: 0.7em;
-        padding: 2px 6px;
-        height: 20px;
-        background: var(--interactive-accent);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-
-    .add-global-btn:hover {
-        opacity: 0.8;
     }
 
     .empty-state {

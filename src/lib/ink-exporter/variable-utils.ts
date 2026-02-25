@@ -97,6 +97,20 @@ export function extractLocalVariables(content: string): VariableRef[] {
 }
 
 /**
+ * Scans all cards in the provided content map and returns a unique list of all variable names used.
+ */
+export function aggregateAllUsedVariables(contentMap: Record<string, { content: string }>): string[] {
+    const allVars = new Set<string>();
+    for (const nodeId in contentMap) {
+        const refs = extractLocalVariables(contentMap[nodeId].content);
+        for (const ref of refs) {
+            allVars.add(ref.varName);
+        }
+    }
+    return Array.from(allVars);
+}
+
+/**
  * Validates a local variable reference against a list of known global variable names.
  */
 export function validateVariableRef(ref: VariableRef, globals: string[]): VariableValidationResult {

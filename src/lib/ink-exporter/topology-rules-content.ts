@@ -25,13 +25,14 @@ The column depth in Lineage determines the structural "level" of the Ink element
 2. **Jump Targets**: Use \`-> knot_name.stitch_name\` for cross-block flow.
 
 ## 3. Flow Control
+<h2>3. Flow Control</h2>
 
 1. **Auto-Divert**: If a card has children, flow continues into them unless an explicit \`->\` is found.
 2. **Choice Terminals**: Choices without children MUST end in \`-> destination\` or \`-> END\`.
 
-## 4. Variables & State
+<h2>4. Variables & State</h2>
 
-1. **Inline References**: Use \`{variable}\` to display or check state.
-2. **Global Declaration**: Global \`VAR\` and \`CONST\` must be defined in the **Story Logic** (found in Sidebar / Parameters).
-3. **Variable Registry**: Use the sidebar to see which variables are in play. If a variable is missing from Story Logic, use the "Add to Global" action to resolve it.
+1. **Implicit Declaration**: You don't need to manually declare \`VAR\` in Ink. Any variable used in \`{variable}\` syntax is automatically tracked.
+2. **Unified Registry**: The editor sidebar scans the **entire storyboard** for variables. You can see and edit the global initial value of any variable from any card.
+3. **Global Initialization**: Setting a value in the Registry automatically initializes it in the **Story Logic** (Parameters sidebar), ensuring it is available when exported.
 `;

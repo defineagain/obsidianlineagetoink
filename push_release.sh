@@ -35,11 +35,12 @@ if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-NOTES="### Global Variable Management & Auto-Resolution
-- **Global Variable Registry**: View and edit ALL global variables (VAR/CONST) directly from the Ink Block Editor sidebar.
-- **Card-Specific Highlighting**: Variables used in the current card are now highlighted in the global list for quick identification.
-- **Auto-Declaration (Fix)**: Detected variables that aren't declared in Story Logic can now be added to the global frontmatter with a single click.
-- **Embedded Variable Documentation**: Added a \"Variables & State\" section to the Topology Rules help panel."
+NOTES="### Unified Global Variable Registry
+- **Board-Wide Aggregation**: The sidebar now automatically scans the ENTIRE storyboard for variables, providing a unified list of everything in play.
+- **Implicit Declaration**: No manual VAR declaration needed. Any variable found in a card can be initialized/edited directly from the sidebar.
+- **Current-Card Context**: Variables used in the active card are highlighted with a \"●\" indicator, while all other storyboard variables remain visible and editable.
+- **Auto-Initialization**: Setting a value for an undeclared variable automatically adds it to the \"Story Logic\" globally.
+- **Updated Docs**: Documentation now reflects the streamlined variable handling philosophy."
 
 # Determine which files to include based on existence
 FILES="main.js manifest.json"
@@ -48,7 +49,7 @@ if [ -f styles.css ]; then
 fi
 
 gh release create "$VERSION" $FILES \
-    --title "$VERSION - Global Variable Management" \
+    --title "$VERSION - Unified Variable Registry" \
     --notes "$NOTES"
 
 if [ $? -eq 0 ]; then
