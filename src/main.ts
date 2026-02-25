@@ -1,6 +1,5 @@
 import { Plugin, WorkspaceLeaf } from 'obsidian';
 import { LINEAGE_VIEW_TYPE, LineageView } from './view/view';
-import { getActiveLineageView } from 'src/obsidian/commands/helpers/get-active-lineage-view';
 import { createSetViewState } from 'src/obsidian/patches/create-set-view-state';
 import { around } from 'monkey-around';
 import { settingsReducer } from 'src/stores/settings/settings-reducer';
@@ -37,6 +36,7 @@ import { onVaultEvent } from 'src/stores/plugin/subscriptions/on-vault-event';
 import { onWorkspaceEvent } from 'src/stores/plugin/subscriptions/on-workspace-event';
 import { SettingsActions } from 'src/stores/settings/settings-store-actions';
 import { InkPresentationView, INK_PRESENTATION_VIEW_TYPE } from 'src/view/InkPresentationView';
+import { InkBlockEditorView, INK_BLOCK_EDITOR_VIEW_TYPE } from 'src/view/InkBlockEditorView';
 
 export type SettingsStore = Store<Settings, SettingsActions>;
 export type PluginStore = Store<PluginState, PluginStoreActions>;
@@ -64,6 +64,10 @@ export default class Lineage extends Plugin {
         this.registerView(
             INK_PRESENTATION_VIEW_TYPE,
             (leaf) => new InkPresentationView(leaf, this)
+        );
+        this.registerView(
+            INK_BLOCK_EDITOR_VIEW_TYPE,
+            (leaf) => new InkBlockEditorView(leaf, this)
         );
         addCommands(this);
         this.registerPatches();
@@ -123,16 +127,22 @@ export default class Lineage extends Plugin {
             },
         );
         this.addRibbonIcon(
-            'layout-list',
-            'Toggle Ink Sidebar',
+            'layout-grid',
+            'Open Ink Block Editor',
             () => {
-                const view = getActiveLineageView(this);
-                if (view) {
-                    this.settings.dispatch({ type: 'view/left-sidebar/toggle' });
+                const { workspace } = this.app;
+                let leaf = workspace.getLeavesOfType(INK_BLOCK_EDITOR_VIEW_TYPE)[0];
+                if (!leaf) {
+                    const rightLeaf = workspace.getRightLeaf(false);
+                    if (rightLeaf) {
+                        rightLeaf.setViewState({ type: INK_BLOCK_EDITOR_VIEW_TYPE, active: true });
+                        workspace.revealLeaf(rightLeaf);
+                    }
+                } else {
+                    workspace.revealLeaf(leaf);
                 }
-            },
+            }
         );
-
     }
 
     onunload() {

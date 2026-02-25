@@ -25,7 +25,7 @@ export const DEFAULT_SETTINGS = (): Settings => ({
         limitPreviewHeight: true,
         zoomLevel: 1,
         showMinimap: false,
-        showLeftSidebar: true,
+        showLeftSidebar: false,
         leftSidebarWidth: 500,
         leftSidebarActiveTab: 'pinned-cards',
         applyGapBetweenCards: false,
