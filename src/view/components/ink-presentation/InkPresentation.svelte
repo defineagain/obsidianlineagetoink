@@ -9,6 +9,8 @@
     import { htmlCommentToJson } from 'src/lib/data-conversion/x-to-json/html-comment-to-json';
     import { fade, slide } from 'svelte/transition';
 
+    import { RotateCcw, ArrowLeft } from 'lucide-svelte';
+
     export let plugin: Lineage;
     export let view: any;
 
@@ -23,6 +25,7 @@
     let story: any = null;
     let history: DisplayItem[] = [];
     let currentChoices: any[] = [];
+    let undoStack: string[] = []; // Store story state snapshots
     let compilationError: string | null = null;
     let scrollContainer: HTMLElement;
 
@@ -48,6 +51,16 @@
     async function loadActiveStory() {
         const file = plugin.app.workspace.getActiveFile();
         if (file && (file.extension === 'md' || file.extension === 'ink')) {
+            // Restore from view state if available and targeting the same file
+            if (view.inkState && view.inkState.path === file.path && view.story) {
+                activeFilePath = view.inkState.path;
+                story = view.story;
+                history = view.inkState.history;
+                currentChoices = view.inkState.currentChoices;
+                undoStack = view.inkState.undoStack || [];
+                return;
+            }
+
             if (activeFilePath === file.path && story) return;
 
             activeFilePath = file.path;
@@ -55,57 +68,35 @@
 
             let inkString = '';
             if (file.extension === 'ink') {
-                // Raw .ink file — use directly
                 inkString = content;
             } else {
-                // Markdown file — try to extract fenced ink block first
                 const block = extractInkBlock(content);
                 if (block) {
                     inkString = block.inkSource;
                 } else {
-                    // Legacy fallback: HTML-comment format → tree → Ink
                     const ast = htmlCommentToJson(content);
                     inkString = astToInk(ast);
                 }
             }
 
-            console.log('Ink Player: Compiling story from', file.path);
-            console.log('Ink String Length:', inkString.length);
-            // console.log("Ink String Preview:", inkString.substring(0, 500));
-
             try {
-                // If we already have a story for this file, use it
-                if (
-                    view.story &&
-                    activeFilePath === view.story._activeFilePath
-                ) {
-                    story = view.story;
-                } else {
-                    console.log(
-                        'Lineage: Compiling Ink story (Length:',
-                        inkString.length,
-                        ')',
-                    );
-                    const compiler = new Compiler(inkString);
-                    const compiledStory = compiler.Compile();
-                    story = new Story(compiledStory.ToJson());
-                    story._activeFilePath = activeFilePath;
-                    view.story = story;
-                }
+                const compiler = new Compiler(inkString);
+                const compiledStory = compiler.Compile();
+                story = new Story(compiledStory.ToJson());
+                story._activeFilePath = activeFilePath;
+                view.story = story;
+                
                 compilationError = null;
                 history = [];
                 currentChoices = [];
+                undoStack = [];
+                
+                // Initialize view state
+                saveStateToView();
                 continueStory();
             } catch (e: any) {
                 console.error('Lineage: Ink Compilation Error:', e);
                 compilationError = e.message || String(e);
-                if (e.stack) {
-                    console.error('Lineage: Stack trace:', e.stack);
-                }
-                console.log(
-                    'Lineage: Ink snippet (first 200 chars):',
-                    inkString.substring(0, 200),
-                );
                 story = null;
                 history = [];
                 currentChoices = [];
@@ -117,6 +108,16 @@
             currentChoices = [];
             compilationError = null;
         }
+    }
+
+    function saveStateToView() {
+        if (!activeFilePath) return;
+        view.inkState = {
+            path: activeFilePath,
+            history: history,
+            currentChoices: currentChoices,
+            undoStack: undoStack
+        };
     }
 
     function continueStory() {
@@ -137,10 +138,15 @@
 
         history = [...history, ...newItems];
         currentChoices = story.currentChoices;
+        saveStateToView();
     }
 
     function chooseChoice(index: number) {
         if (!story) return;
+        
+        // Save snapshot for undo
+        undoStack = [...undoStack, story.state.ToJson()];
+        
         const choice = currentChoices[index];
         story.ChooseChoiceIndex(index);
 
@@ -157,9 +163,39 @@
         continueStory();
     }
 
+    function undoChoice() {
+        if (!story || undoStack.length === 0) return;
+        
+        const lastState = undoStack.pop();
+        if (!lastState) return;
+        
+        story.state.LoadJson(lastState);
+        undoStack = [...undoStack]; // Trigger reactivity
+        
+        // Remove everything after the last'choice-selected' in history
+        const lastChoiceIndex = findLastIndex(history, item => item.type === 'choice-selected');
+        if (lastChoiceIndex !== -1) {
+            history = history.slice(0, lastChoiceIndex);
+        } else {
+            history = [];
+        }
+        
+        currentChoices = story.currentChoices;
+        saveStateToView();
+    }
+
     function restartStory() {
-        activeFilePath = ''; // Force reload
+        // Clear view state to force full reload
+        if (view.inkState) delete view.inkState;
+        activeFilePath = ''; 
         loadActiveStory();
+    }
+
+    function findLastIndex<T>(array: T[], predicate: (value: T) => boolean): number {
+        for (let i = array.length - 1; i >= 0; i--) {
+            if (predicate(array[i])) return i;
+        }
+        return -1;
     }
 
     function getImageUrl(tag: string): string | null {
@@ -181,18 +217,29 @@
         <div class="status-bar">
             {#if activeFilePath}
                 <span class="file-info" title={activeFilePath}>
-                    Playing: <strong>{activeFilePath.split('/').pop()}</strong>
+                    <strong>{activeFilePath.split('/').pop()}</strong>
                 </span>
             {:else}
                 <span class="file-info">No active story</span>
             {/if}
-            <button
-                class="restart-btn"
-                on:click={restartStory}
-                disabled={!story}
-            >
-                Restart
-            </button>
+            <div class="header-actions">
+                <button
+                    class="action-btn"
+                    on:click={undoChoice}
+                    disabled={!story || undoStack.length === 0}
+                    title="Back (Undo)"
+                >
+                    <ArrowLeft size={14} />
+                </button>
+                <button
+                    class="action-btn"
+                    on:click={restartStory}
+                    disabled={!story}
+                    title="Restart Story"
+                >
+                    <RotateCcw size={14} />
+                </button>
+            </div>
         </div>
     </div>
 
@@ -287,10 +334,33 @@
         text-overflow: ellipsis;
     }
 
-    .restart-btn {
-        font-size: 0.7em;
-        padding: 2px 8px;
-        height: auto;
+    .header-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .action-btn {
+        background: var(--background-primary);
+        border: 1px solid var(--background-modifier-border);
+        border-radius: var(--radius-s);
+        color: var(--text-muted);
+        padding: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+    }
+
+    .action-btn:hover:not(:disabled) {
+        color: var(--text-normal);
+        background: var(--background-modifier-hover);
+        border-color: var(--color-accent);
+    }
+
+    .action-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
     }
 
     .story-viewport {

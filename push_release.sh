@@ -35,14 +35,25 @@ if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-NOTES='### Sidebar Live Sync Fix (v0.8.3)
+# Initialize TITLE and NOTES variables
+TITLE="$VERSION - Release"
+NOTES="No specific release notes for this version."
+
+# Determine title and notes based on version
+if [ "$VERSION" == "0.8.4" ]; then
+    TITLE="v0.8.4 - Player Persistence & Navigation"
+    NOTES="### ✨ Improvements & Fixes
+- **Player Persistence**: Narrative history and choices now survive tab switching.
+- **Undo Navigation**: Added a 'Back' button to rewind choices via story snapshots.
+- **Restart Button**: Added a dedicated restart button in the player header.
+- **UI Refresh**: Integrated Lucide icons for player navigation."
+elif [[ "$VERSION" == "0.8.3" ]]; then
+    TITLE="v0.8.3 - Sidebar Sync Fix"
+    NOTES='### Sidebar Live Sync Fix (v0.8.3)
 - **Regional Sync**: Fixed a critical bug where the Values tab in the sidebar was syncing with the main editor instead of the sidebar player.
 - **Context Awareness**: Components now properly prioritize the local story state for live variable updates.
 - **Live Sync Refresh**: Fixed an issue where the Values tab would freeze; added 500ms polling to track live `inkjs` updates.
 - **Build Quality**: Cleaned up standalone view state errors and accessibility warnings.'
-
-# Determine which files to include based on existence
-FILES="main.js manifest.json"
 if [ -f styles.css ]; then
     FILES="$FILES styles.css"
 fi
