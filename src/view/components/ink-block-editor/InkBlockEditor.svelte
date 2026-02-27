@@ -17,17 +17,6 @@
         detectBlockType,
         type BlockType,
     } from 'src/lib/ink-exporter/block-formatter';
-    import {
-        extractLocalVariables,
-        validateVariableRef,
-        parseGlobalVariables,
-        updateGlobalVariableInFM,
-        addGlobalVariableToFM,
-        aggregateAllUsedVariables,
-        type VariableRef,
-        type VariableValidationResult,
-        type InkVariable,
-    } from 'src/lib/ink-exporter/variable-utils';
     import { TOPOLOGY_RULES_MD } from 'src/lib/ink-exporter/topology-rules-content';
     import { MarkdownRenderer } from 'obsidian';
 
@@ -37,6 +26,7 @@
     let activeView: LineageView | null = null;
     let activeNodeId: string | null = null;
     let nodeContent: string = '';
+    let editorEl: HTMLTextAreaElement;
 
     const unsubscribeViewStore = () => {
         if (viewStoreUnsubscribe) {
@@ -48,29 +38,24 @@
     let viewStoreUnsubscribe: (() => void) | null = null;
 
     const updateActiveView = () => {
-        const view = getActiveLineageView(plugin) || plugin.lastActiveView;
-        if (view !== activeView) {
+        const found = getActiveLineageView(plugin) || plugin.lastActiveView;
+        // Only update if we found a real LineageView.
+        // When the sidebar itself gets focus, getActiveLineageView returns null —
+        // we must NOT null out activeView or all button handlers break.
+        if (!found) return;
+        if (found !== activeView) {
             unsubscribeViewStore();
-            activeView = view;
-            if (activeView) {
-                viewStoreUnsubscribe = activeView.viewStore.subscribe(
-                    (state) => {
-                        activeNodeId = state.document.activeNode;
-                        if (activeNodeId) {
-                            const docState =
-                                activeView!.documentStore.getValue();
-                            nodeContent =
-                                docState.document.content[activeNodeId]
-                                    ?.content || '';
-                        } else {
-                            nodeContent = '';
-                        }
-                    },
-                );
-            } else {
-                activeNodeId = null;
-                nodeContent = '';
-            }
+            activeView = found;
+            viewStoreUnsubscribe = activeView.viewStore.subscribe((state) => {
+                activeNodeId = state.document.activeNode;
+                if (activeNodeId) {
+                    const docState = activeView!.documentStore.getValue();
+                    nodeContent =
+                        docState.document.content[activeNodeId]?.content || '';
+                } else {
+                    nodeContent = '';
+                }
+            });
         }
     };
 
@@ -96,6 +81,28 @@
         });
     }
 
+    function insertSnippet(snippet: string) {
+        if (!editorEl) return;
+        const start = editorEl.selectionStart;
+        const end = editorEl.selectionEnd;
+        const before = nodeContent.substring(0, start);
+        const after = nodeContent.substring(end);
+
+        // Ensure newlines if needed
+        const needsNewlineBefore = before.length > 0 && !before.endsWith('\n');
+        const finalSnippet = (needsNewlineBefore ? '\n' : '') + snippet;
+
+        nodeContent = before + finalSnippet + after;
+        updateContent(nodeContent);
+
+        // Restore focus and position cursor
+        setTimeout(() => {
+            editorEl.focus();
+            const newPos = start + finalSnippet.length;
+            editorEl.setSelectionRange(newPos, newPos);
+        }, 0);
+    }
+
     // Reactive taxonomy detection
     $: currentType = detectBlockType(nodeContent);
 
@@ -107,96 +114,6 @@
         );
         return validateNodeTopology(nodeContent, depth);
     })();
-
-    $: globalVars = (() => {
-        if (!activeView) return [];
-        const state = activeView.documentStore.getValue();
-        const { vars } = parseGlobalVariables(state.file.frontmatter);
-        return vars;
-    })();
-
-    $: globalNames = globalVars.map((v) => v.name.replace(/^LIST\s+/, ''));
-
-    // Board-wide aggregation: find all variables used in any card
-    $: allBoardVariables = (() => {
-        if (!activeView) return [];
-        const state = activeView.documentStore.getValue();
-        return aggregateAllUsedVariables(state.document.content);
-    })();
-
-    $: variableRefs = (() => {
-        const refs = extractLocalVariables(nodeContent);
-        return refs.map((ref) => ({
-            ...ref,
-            validation: validateVariableRef(ref, globalNames),
-        }));
-    })();
-
-    // Unified list: combine declared globals + undeclared variables found anywhere on the board
-    $: unifiedRegistry = (() => {
-        // 1. Start with everything declared in logic
-        const registry = globalVars.map(v => ({
-            name: v.name,
-            value: v.value,
-            type: v.type,
-            isDeclared: true,
-            isUsedOnBoard: allBoardVariables.includes(v.name.replace(/^LIST\s+/, '')),
-            isUsedInCurrentCard: variableRefs.some(ref => ref.varName === v.name.replace(/^LIST\s+/, ''))
-        }));
-
-        // 2. Add variables found on board but NOT in logic
-        const undeclared = allBoardVariables.filter(name => !globalNames.includes(name));
-        for (const name of undeclared) {
-            registry.push({
-                name,
-                value: '?',
-                type: 'VAR',
-                isDeclared: false,
-                isUsedOnBoard: true,
-                isUsedInCurrentCard: variableRefs.some(ref => ref.varName === name)
-            });
-        }
-        
-        // Sort: Active in card first, then declared, then name
-        return registry.sort((a, b) => {
-            if (a.isUsedInCurrentCard !== b.isUsedInCurrentCard) return a.isUsedInCurrentCard ? -1 : 1;
-            if (a.isDeclared !== b.isDeclared) return a.isDeclared ? -1 : 1;
-            return a.name.localeCompare(b.name);
-        });
-    })();
-
-    function updateGlobalVar(varName: string, newValue: string) {
-        if (!activeView) return;
-        const state = activeView.documentStore.getValue();
-        const currentFM = state.file.frontmatter;
-        
-        // If not declared yet, add it. Otherwise update it.
-        const isDeclared = globalNames.includes(varName);
-        const newFM = isDeclared 
-            ? updateGlobalVariableInFM(currentFM, varName, newValue)
-            : addGlobalVariableToFM(currentFM, varName, 'VAR', newValue);
-
-        if (newFM !== currentFM) {
-            activeView.documentStore.dispatch({
-                type: 'document/file/update-frontmatter',
-                payload: { frontmatter: newFM },
-            });
-        }
-    }
-
-    function addPendingVar(varName: string) {
-        if (!activeView) return;
-        const state = activeView.documentStore.getValue();
-        const currentFM = state.file.frontmatter;
-        // Default to VAR with value 0
-        const newFM = addGlobalVariableToFM(currentFM, varName, 'VAR', '0');
-        if (newFM !== currentFM) {
-            activeView.documentStore.dispatch({
-                type: 'document/file/update-frontmatter',
-                payload: { frontmatter: newFM },
-            });
-        }
-    }
 
     function applyFormatting(targetType: BlockType) {
         if (!activeNodeId) return;
@@ -273,6 +190,39 @@
             },
         ).open();
     };
+
+    type InkUnitType =
+        | 'knot'
+        | 'stitch'
+        | 'choice'
+        | 'sticky'
+        | 'gather'
+        | 'divert';
+
+    const INK_UNIT_TEMPLATES: Record<
+        InkUnitType,
+        { content: string; position: 'down' | 'right' }
+    > = {
+        knot: { content: '# new_knot', position: 'down' },
+        stitch: { content: '## new_stitch', position: 'right' },
+        choice: { content: '* Choice text', position: 'right' },
+        sticky: { content: '+ Sticky choice', position: 'right' },
+        gather: { content: '- Gather point', position: 'right' },
+        divert: { content: '-> knot_name', position: 'down' },
+    };
+
+    function addInkUnit(unitType: InkUnitType) {
+        if (!activeView || !activeNodeId) return;
+        const template = INK_UNIT_TEMPLATES[unitType];
+        activeView.documentStore.dispatch({
+            type: 'document/add-node',
+            payload: {
+                position: template.position,
+                activeNodeId: activeNodeId,
+                content: template.content,
+            },
+        });
+    }
 </script>
 
 <div class="lineage-ink-block-editor">
@@ -281,6 +231,46 @@
             <h4>Ink Block Editor</h4>
             <div class="editor-subtitle">
                 Editing card for: {activeView?.getDisplayText() || 'Unknown'}
+            </div>
+        </div>
+
+        <div class="block-group add-unit-group">
+            <div class="group-label">Add Unit</div>
+            <div class="add-unit-grid">
+                <button
+                    class="add-unit-btn"
+                    on:click={() => addInkUnit('knot')}
+                    title="Add a new Knot (=== name ===) as a sibling"
+                    >+ Knot</button
+                >
+                <button
+                    class="add-unit-btn"
+                    on:click={() => addInkUnit('stitch')}
+                    title="Add a new Stitch (= name) as a child"
+                    >+ Stitch</button
+                >
+                <button
+                    class="add-unit-btn"
+                    on:click={() => addInkUnit('choice')}
+                    title="Add a Choice (* text) as a child">+ Choice</button
+                >
+                <button
+                    class="add-unit-btn"
+                    on:click={() => addInkUnit('sticky')}
+                    title="Add a Sticky Choice (+ text) as a child"
+                    >+ Sticky</button
+                >
+                <button
+                    class="add-unit-btn"
+                    on:click={() => addInkUnit('gather')}
+                    title="Add a Gather (- text) as a child">+ Gather</button
+                >
+                <button
+                    class="add-unit-btn"
+                    on:click={() => addInkUnit('divert')}
+                    title="Add a Divert (-> target) as a sibling"
+                    >+ Divert</button
+                >
             </div>
         </div>
 
@@ -399,48 +389,54 @@
             </div>
         {/if}
 
-        <div class="variable-section">
-            <div class="group-label">Unified Variable Registry</div>
-            <div class="variable-refs">
-                {#each unifiedRegistry as v}
-                    <div 
-                        class="variable-ref-row global-row" 
-                        class:is-active-card={v.isUsedInCurrentCard}
-                        class:is-undeclared={!v.isDeclared}
-                    >
-                        <div class="var-badge-container">
-                            <span class="var-badge" title={v.isDeclared ? 'Declared in Story Logic' : 'Found in cards but not declared'}>
-                                {v.name}
-                            </span>
-                            {#if v.isUsedInCurrentCard}
-                                <span class="local-indicator" title="Present in this card">●</span>
-                            {/if}
-                            {#if !v.isDeclared}
-                                <span class="undeclared-warning" title="Undeclared variable">!</span>
-                            {/if}
-                        </div>
-                        <input
-                            type="text"
-                            class="var-ref-input global-val-input"
-                            value={v.value}
-                            placeholder={v.isDeclared ? '' : 'Init value...'}
-                            on:change={(e) => updateGlobalVar(v.name, e.currentTarget.value)}
-                            on:click|stopPropagation
-                        />
-                    </div>
-                {/each}
-
-                {#if unifiedRegistry.length === 0}
-                    <div class="empty-state">No variables found in storyboard.</div>
-                {/if}
-            </div>
-        </div>
-
         <div class="preview-area">
             <div class="group-label">Card Content Editor</div>
+
+            <div class="snippet-ribbon">
+                <button
+                    class="snippet-btn"
+                    title="Increment: ~ var += 1"
+                    on:click={() => insertSnippet('~ var += 1')}>+1</button
+                >
+                <button
+                    class="snippet-btn"
+                    title="Decrement: ~ var -= 1"
+                    on:click={() => insertSnippet('~ var -= 1')}>-1</button
+                >
+                <button
+                    class="snippet-btn"
+                    title="Set True: ~ var = true"
+                    on:click={() => insertSnippet('~ var = true')}>True</button
+                >
+                <button
+                    class="snippet-btn"
+                    title="Set False: ~ var = false"
+                    on:click={() => insertSnippet('~ var = false')}
+                    >False</button
+                >
+                <button
+                    class="snippet-btn"
+                    title="Variable Check"
+                    on:click={() => insertSnippet('{var}')}>{'{x}'}</button
+                >
+                <button
+                    class="snippet-btn"
+                    title="Logic Block"
+                    on:click={() =>
+                        insertSnippet('{\n    - var: \n    - else: \n}')}
+                    >Logic</button
+                >
+                <button
+                    class="snippet-btn"
+                    title="Divert"
+                    on:click={() => insertSnippet('-> target')}>Divert</button
+                >
+            </div>
+
             <textarea
                 class="content-editor"
                 bind:value={nodeContent}
+                bind:this={editorEl}
                 on:input={() => updateContent(nodeContent)}
                 placeholder="Type Ink content here..."
             ></textarea>
@@ -458,7 +454,9 @@
                     <strong
                         >Topology Check: {validationResult.type.toUpperCase()}</strong
                     >
-                    <span class="detected-type-tag">{validationResult.detectedType}</span>
+                    <span class="detected-type-tag"
+                        >{validationResult.detectedType}</span
+                    >
                 </div>
                 <div class="val-message">{validationResult.message}</div>
             </div>
@@ -517,6 +515,41 @@
         letter-spacing: 0.05em;
         color: var(--text-faint);
         font-weight: bold;
+    }
+
+    .add-unit-group {
+        border-bottom: 1px solid var(--background-modifier-border);
+        padding-bottom: 1rem;
+    }
+
+    .add-unit-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 4px;
+    }
+
+    .add-unit-btn {
+        font-size: 0.75em;
+        padding: 5px 4px;
+        background: var(--background-secondary);
+        border: 1px solid var(--background-modifier-border);
+        border-radius: var(--radius-s);
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        text-align: center;
+        font-weight: 500;
+    }
+
+    .add-unit-btn:hover {
+        background: var(--color-accent);
+        color: var(--text-on-accent, #fff);
+        border-color: var(--color-accent);
+        transform: scale(1.03);
+    }
+
+    .add-unit-btn:active {
+        transform: scale(0.97);
     }
 
     .button-grid {
@@ -697,6 +730,39 @@
         margin-top: 2rem;
     }
 
+    /* Snippet Ribbon */
+    .snippet-ribbon {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        padding: 4px 2px;
+        margin-top: 0.25rem;
+        scrollbar-width: thin;
+    }
+
+    .snippet-ribbon::-webkit-scrollbar {
+        height: 3px;
+    }
+
+    .snippet-btn {
+        background: var(--background-secondary-alt);
+        border: 1px solid var(--background-modifier-border);
+        border-radius: var(--radius-s);
+        color: var(--text-muted);
+        font-family: var(--font-monospace);
+        font-size: 0.7em;
+        padding: 2px 8px;
+        cursor: pointer;
+        white-space: nowrap;
+        height: auto;
+    }
+
+    .snippet-btn:hover {
+        background: var(--color-accent);
+        color: white;
+        border-color: var(--color-accent);
+    }
+
     /* Taxonomy active state */
     .topology-btn {
         transition: all 0.15s ease;
@@ -707,112 +773,5 @@
         color: white;
         border-color: var(--color-accent);
         font-weight: bold;
-    }
-
-    /* Variable references */
-    .variable-section {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .variable-refs {
-        display: flex;
-        flex-direction: column;
-        gap: 0.4rem;
-    }
-
-    .variable-ref-row {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 4px 8px;
-        border-radius: var(--radius-s);
-        transition: all 0.1s ease-in-out;
-    }
-
-    .variable-ref-row.global-row.is-active-card {
-        background: rgba(var(--interactive-accent-rgb), 0.1);
-        border-left: 2px solid var(--interactive-accent);
-    }
-
-    .variable-ref-row.is-undeclared {
-        background: rgba(var(--text-warning-rgb), 0.05);
-        border-left: 2px dashed var(--text-warning);
-    }
-
-    .local-indicator {
-        color: var(--interactive-accent);
-        font-size: 0.8em;
-        margin-left: 2px;
-    }
-
-    .undeclared-warning {
-        color: var(--text-warning);
-        font-weight: bold;
-        font-size: 0.8em;
-        margin-left: 2px;
-    }
-
-    .global-val-input {
-        text-align: right;
-        color: var(--text-muted);
-        font-weight: bold;
-    }
-
-    .empty-state {
-        font-size: 0.8em;
-        color: var(--text-faint);
-        text-align: center;
-        padding: 8px;
-        font-style: italic;
-    }
-
-    .variable-ref-row.val-warning {
-        background: rgba(var(--color-orange-rgb), 0.1);
-        border-left: 2px solid var(--color-orange);
-    }
-
-    .variable-ref-row.val-error {
-        background: rgba(var(--color-red-rgb), 0.1);
-        border-left: 2px solid var(--color-red);
-    }
-
-    .var-badge-container {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        min-width: 80px;
-    }
-
-    .var-badge {
-        display: inline-flex;
-        align-items: center;
-        font-size: 0.75em;
-        font-family: var(--font-monospace);
-        background: rgba(var(--color-accent-rgb, 71, 135, 235), 0.15);
-        color: var(--color-accent);
-        padding: 2px 8px;
-        border-radius: 10px;
-        border: 1px solid rgba(var(--color-accent-rgb, 71, 135, 235), 0.3);
-        min-width: 80px;
-        justify-content: center;
-        white-space: nowrap;
-    }
-
-    .var-ref-input {
-        flex: 1;
-        font-family: var(--font-monospace);
-        font-size: 0.8em;
-        background: var(--background-secondary);
-        border: 1px solid var(--background-modifier-border);
-        color: var(--text-normal);
-        padding: 3px 8px;
-        border-radius: var(--radius-s);
-    }
-
-    .var-ref-input:focus {
-        border-color: var(--color-accent);
-        outline: none;
     }
 </style>

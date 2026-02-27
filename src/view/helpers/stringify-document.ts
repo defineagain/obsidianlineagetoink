@@ -4,13 +4,18 @@ import { columnsToJson } from 'src/lib/data-conversion/x-to-json/columns-to-json
 import { jsonToHtmlComment } from 'src/lib/data-conversion/json-to-x/json-to-html-comment';
 import { jsonToOutline } from 'src/lib/data-conversion/json-to-x/json-to-outline';
 import { jsonToHtmlElement } from 'src/lib/data-conversion/json-to-x/json-to-html-element';
+import { astToInk } from 'src/lib/ink-exporter/ast-parser';
 
 export const stringifyDocument = (
     document: LineageDocument,
     format: LineageDocumentFormat,
+    inkLogic?: string,
 ) => {
     const json = columnsToJson(document.columns, document.content);
-    if (format === 'outline') {
+    if (format === 'ink') {
+        const inkBody = astToInk(json);
+        return inkLogic ? inkLogic + '\n\n' + inkBody : inkBody;
+    } else if (format === 'outline') {
         return jsonToOutline(json);
     } else if (format === 'html-element') {
         return jsonToHtmlElement(json);

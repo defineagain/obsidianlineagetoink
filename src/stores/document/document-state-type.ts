@@ -21,6 +21,12 @@ export type DocumentState = {
     file: {
         // path: string | null;
         frontmatter: string;
+        /** Markdown content before the fenced ink block (Ink-native mode) */
+        inkPreamble: string;
+        /** Markdown content after the fenced ink block (Ink-native mode) */
+        inkPostamble: string;
+        /** Global logic extracted by inkToAst (VAR, CONST, functions) */
+        inkLogic: string;
     };
     meta: DocumentMeta;
     history: DocumentHistory;

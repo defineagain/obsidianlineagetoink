@@ -7,6 +7,7 @@ export const INK_PRESENTATION_VIEW_TYPE = 'lineage-ink-presentation';
 export class InkPresentationView extends ItemView {
     component: InkPresentationComponent;
     plugin: Lineage;
+    story: any | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: Lineage) {
         super(leaf);
@@ -29,7 +30,8 @@ export class InkPresentationView extends ItemView {
         this.component = new InkPresentationComponent({
             target: this.contentEl,
             props: {
-                plugin: this.plugin
+                plugin: this.plugin,
+                view: this
             }
         });
     }

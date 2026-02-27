@@ -4,11 +4,13 @@
     import Lineage from 'src/main';
     // @ts-ignore
     import { Compiler, Story } from 'inkjs/full';
+    import { extractInkBlock } from 'src/lib/ink-block/ink-block-utils';
     import { astToInk } from 'src/lib/ink-exporter/ast-parser';
     import { htmlCommentToJson } from 'src/lib/data-conversion/x-to-json/html-comment-to-json';
     import { fade, slide } from 'svelte/transition';
 
     export let plugin: Lineage;
+    export let view: any;
 
     type DisplayItem = {
         type: 'text' | 'choice-selected' | 'error';
@@ -17,7 +19,7 @@
         id: string;
     };
 
-    let activeFilePath = "";
+    let activeFilePath = '';
     let story: any = null;
     let history: DisplayItem[] = [];
     let currentChoices: any[] = [];
@@ -45,30 +47,71 @@
 
     async function loadActiveStory() {
         const file = plugin.app.workspace.getActiveFile();
-        if (file && file.extension === 'md') {
+        if (file && (file.extension === 'md' || file.extension === 'ink')) {
             if (activeFilePath === file.path && story) return;
-            
+
             activeFilePath = file.path;
             const content = await plugin.app.vault.read(file);
-            const ast = htmlCommentToJson(content);
-            const inkString = astToInk(ast);
+
+            let inkString = '';
+            if (file.extension === 'ink') {
+                // Raw .ink file — use directly
+                inkString = content;
+            } else {
+                // Markdown file — try to extract fenced ink block first
+                const block = extractInkBlock(content);
+                if (block) {
+                    inkString = block.inkSource;
+                } else {
+                    // Legacy fallback: HTML-comment format → tree → Ink
+                    const ast = htmlCommentToJson(content);
+                    inkString = astToInk(ast);
+                }
+            }
+
+            console.log('Ink Player: Compiling story from', file.path);
+            console.log('Ink String Length:', inkString.length);
+            // console.log("Ink String Preview:", inkString.substring(0, 500));
 
             try {
-                const compiler = new Compiler(inkString);
-                const storyJson = compiler.Compile().ToJson();
-                story = new Story(storyJson);
+                // If we already have a story for this file, use it
+                if (
+                    view.story &&
+                    activeFilePath === view.story._activeFilePath
+                ) {
+                    story = view.story;
+                } else {
+                    console.log(
+                        'Lineage: Compiling Ink story (Length:',
+                        inkString.length,
+                        ')',
+                    );
+                    const compiler = new Compiler(inkString);
+                    const compiledStory = compiler.Compile();
+                    story = new Story(compiledStory.ToJson());
+                    story._activeFilePath = activeFilePath;
+                    view.story = story;
+                }
                 compilationError = null;
                 history = [];
+                currentChoices = [];
                 continueStory();
-            } catch (error: any) {
-                console.error("Ink compilation error", error);
-                compilationError = error.message;
+            } catch (e: any) {
+                console.error('Lineage: Ink Compilation Error:', e);
+                compilationError = e.message || String(e);
+                if (e.stack) {
+                    console.error('Lineage: Stack trace:', e.stack);
+                }
+                console.log(
+                    'Lineage: Ink snippet (first 200 chars):',
+                    inkString.substring(0, 200),
+                );
                 story = null;
                 history = [];
                 currentChoices = [];
             }
         } else {
-            activeFilePath = "";
+            activeFilePath = '';
             story = null;
             history = [];
             currentChoices = [];
@@ -78,7 +121,7 @@
 
     function continueStory() {
         if (!story) return;
-        
+
         let newItems: DisplayItem[] = [];
         while (story.canContinue) {
             const line = story.Continue().trim();
@@ -87,11 +130,11 @@
                     type: 'text',
                     content: line,
                     tags: [...story.currentTags],
-                    id: Math.random().toString(36).substr(2, 9)
+                    id: Math.random().toString(36).substr(2, 9),
                 });
             }
         }
-        
+
         history = [...history, ...newItems];
         currentChoices = story.currentChoices;
     }
@@ -100,19 +143,22 @@
         if (!story) return;
         const choice = currentChoices[index];
         story.ChooseChoiceIndex(index);
-        
-        history = [...history, {
-            type: 'choice-selected',
-            content: choice.text,
-            id: Math.random().toString(36).substr(2, 9)
-        }];
-        
+
+        history = [
+            ...history,
+            {
+                type: 'choice-selected',
+                content: choice.text,
+                id: Math.random().toString(36).substr(2, 9),
+            },
+        ];
+
         currentChoices = [];
         continueStory();
     }
-    
+
     function restartStory() {
-        activeFilePath = ""; // Force reload
+        activeFilePath = ''; // Force reload
         loadActiveStory();
     }
 
@@ -140,7 +186,11 @@
             {:else}
                 <span class="file-info">No active story</span>
             {/if}
-            <button class="restart-btn" on:click={restartStory} disabled={!story}>
+            <button
+                class="restart-btn"
+                on:click={restartStory}
+                disabled={!story}
+            >
                 Restart
             </button>
         </div>
@@ -151,14 +201,16 @@
             <div class="error-panel" in:fade>
                 <div class="error-header">Compilation Error</div>
                 <div class="error-msg">{compilationError}</div>
-                <div class="error-hint">Check your Ink syntax in the Editor tab.</div>
+                <div class="error-hint">
+                    Check your Ink syntax in the Editor tab.
+                </div>
             </div>
         {/if}
 
         <div class="history-container">
             {#each history as item (item.id)}
-                <div 
-                    class="history-item {item.type}" 
+                <div
+                    class="history-item {item.type}"
                     in:fade={{ duration: 300 }}
                 >
                     {#if item.tags}
@@ -166,12 +218,16 @@
                             {@const imgUrl = getImageUrl(tag)}
                             {#if imgUrl}
                                 <div class="story-image-container">
-                                    <img src={imgUrl} alt="Story logic asset" class="story-image" />
+                                    <img
+                                        src={imgUrl}
+                                        alt="Story logic asset"
+                                        class="story-image"
+                                    />
                                 </div>
                             {/if}
                         {/each}
                     {/if}
-                    
+
                     <div class="content-text">
                         {#if item.type === 'choice-selected'}
                             <span class="choice-marker">›</span>
@@ -185,7 +241,10 @@
         {#if currentChoices.length > 0}
             <div class="choices-panel" in:slide>
                 {#each currentChoices as choice, i}
-                    <button class="choice-bubble" on:click={() => chooseChoice(i)}>
+                    <button
+                        class="choice-bubble"
+                        on:click={() => chooseChoice(i)}
+                    >
                         {choice.text}
                     </button>
                 {/each}
@@ -257,8 +316,14 @@
     }
 
     @keyframes slideIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .history-item.choice-selected {
@@ -293,7 +358,7 @@
         transition: all 0.2s ease;
         font-size: 0.95em;
         color: var(--text-normal);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
 
     .choice-bubble:hover {

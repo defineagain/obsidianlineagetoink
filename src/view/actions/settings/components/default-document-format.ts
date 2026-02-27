@@ -18,6 +18,7 @@ export const DefaultDocumentFormat = (
             'html-element': lang.settings_format_html_elements,
             sections: lang.settings_format_html_comments,
             outline: lang.settings_format_outline,
+            ink: 'Ink (native)',
         } satisfies Record<LineageDocumentFormat, string>)
             .setValue(value)
             .onChange((value) => {

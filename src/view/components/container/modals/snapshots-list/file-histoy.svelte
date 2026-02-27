@@ -5,14 +5,14 @@
     import { getView } from '../../context';
 
     const view = getView();
-    const history = historyStore(view)
+    const history = historyStore(view);
 </script>
 
-<div class="lineage-modal snapshots-modal" style="padding-left: 0; padding-right:0" tabindex="0">
-    <div
-        class="snapshots-list"
-        use:updateRelativeTime
-    >
+<div
+    class="lineage-modal snapshots-modal"
+    style="padding-left: 0; padding-right:0"
+>
+    <div class="snapshots-list" use:updateRelativeTime>
         {#each [...$history.items].sort((a, b) => b.created - a.created) as snapshot, index (snapshot.id)}
             <SnapshotButton
                 {snapshot}
@@ -24,20 +24,18 @@
 </div>
 
 <style>
-
-
     .snapshots-list {
         width: 400px;
         display: flex;
         flex-direction: column;
-        gap:  var(--size-4-2);
+        gap: var(--size-4-2);
         height: fit-content;
         max-height: 400px;
         overflow-y: auto;
         padding-left: var(--size-4-2);
         padding-right: var(--size-4-2);
     }
-    .snapshots-modal{
+    .snapshots-modal {
         left: var(--size-4-2);
         top: 50px;
     }

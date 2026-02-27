@@ -11,6 +11,9 @@ export const defaultDocumentState = (): DocumentState => ({
     },
     file: {
         frontmatter: '',
+        inkPreamble: '',
+        inkPostamble: '',
+        inkLogic: '',
     },
     history: {
         items: [],

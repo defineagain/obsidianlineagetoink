@@ -81,18 +81,43 @@ export function parseGlobalVariables(frontmatter: string): { vars: InkVariable[]
  */
 export function extractLocalVariables(content: string): VariableRef[] {
     const refs: VariableRef[] = [];
-    const regex = /\{([^}]+)\}/g;
+    const seen = new Set<string>();
+
+    // Pattern 1: {variable} conditionals
+    const braceRegex = /\{([^}]+)\}/g;
     let match;
-    while ((match = regex.exec(content)) !== null) {
+    while ((match = braceRegex.exec(content)) !== null) {
         const inner = match[1].trim();
         // Extract the root variable name from complex expressions:
         // {score > 0: Win|Loss} -> score
         // {name} -> name
         const varName = inner.split(/[ \:\>\<\!\=\|]/)[0].trim();
-        if (varName && /^[a-zA-Z_]\w*$/.test(varName)) {
+        if (varName && /^[a-zA-Z_]\w*$/.test(varName) && !seen.has(varName)) {
             refs.push({ fullMatch: match[0], varName, expression: inner });
+            seen.add(varName);
         }
     }
+
+    // Pattern 2: ~ variable = expression (Ink mutations)
+    const tildeRegex = /~\s*(\w+)\s*=/g;
+    while ((match = tildeRegex.exec(content)) !== null) {
+        const varName = match[1].trim();
+        if (varName && /^[a-zA-Z_]\w*$/.test(varName) && !seen.has(varName)) {
+            refs.push({ fullMatch: match[0], varName, expression: `~ ${varName} = ...` });
+            seen.add(varName);
+        }
+    }
+
+    // Pattern 3: ~ function_call(args) (Ink function calls — extract function name as ref)
+    const funcCallRegex = /~\s*(\w+)\s*\(/g;
+    while ((match = funcCallRegex.exec(content)) !== null) {
+        const funcName = match[1].trim();
+        if (funcName && /^[a-zA-Z_]\w*$/.test(funcName) && !seen.has(funcName)) {
+            refs.push({ fullMatch: match[0], varName: funcName, expression: `~ ${funcName}(...)` });
+            seen.add(funcName);
+        }
+    }
+
     return refs;
 }
 
@@ -204,7 +229,8 @@ export function addGlobalVariableToFM(
     // Avoid duplicates
     if (parsed.vars.some((v) => v.name === varName)) return fm;
 
-    const updatedVars = [...parsed.vars, { type, name: varName, value }];
+    // Prepend to the beginning of the variables list
+    const updatedVars = [{ type, name: varName, value }, ...parsed.vars];
     const newLogicBlock = serializeGlobalVariables(updatedVars, parsed.funcs);
 
     if (fm.includes('story-logic: |')) {
@@ -219,3 +245,103 @@ export function addGlobalVariableToFM(
         return fm.replace(/(?=\n---)/, `\n${newLogicBlock}`);
     }
 }
+
+// ── Ink-Native Logic Parsing ─────────────────────────────────────────────────
+
+/**
+ * Parses global variables and functions from the raw Ink preamble (inkLogic).
+ * Unlike parseGlobalVariables, this reads directly from Ink source, not YAML.
+ */
+export function parseInkLogicVariables(inkLogic: string): { vars: InkVariable[]; funcs: string } {
+    if (!inkLogic || !inkLogic.trim()) return { vars: [], funcs: '' };
+
+    const vars: InkVariable[] = [];
+    const funcLines: string[] = [];
+    let inFunc = false;
+
+    for (const line of inkLogic.split('\n')) {
+        const trimmed = line.trim();
+
+        // Skip empty lines and comments
+        if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('/*')) continue;
+        if (trimmed.startsWith('*') && trimmed.endsWith('*/')) continue;
+
+        // Match VAR/CONST assignments (with optional trailing comment)
+        const varMatch = trimmed.match(/^(VAR|CONST)\s+(\w+)\s*=\s*(.+?)(?:\s*\/\/.*)?$/);
+        if (varMatch) {
+            vars.push({
+                type: varMatch[1] as VariableType,
+                name: varMatch[2],
+                value: varMatch[3].trim(),
+            });
+            continue;
+        }
+
+        // Match LIST declarations
+        if (trimmed.startsWith('LIST ')) {
+            const listMatch = trimmed.match(/^LIST\s+(\w+)\s*=\s*(.+?)(?:\s*\/\/.*)?$/);
+            if (listMatch) {
+                vars.push({
+                    type: 'VAR',
+                    name: `LIST ${listMatch[1]}`,
+                    value: listMatch[2].trim(),
+                });
+            }
+            continue;
+        }
+
+        // Track function blocks
+        if (trimmed.startsWith('=== function') || inFunc) {
+            inFunc = true;
+            funcLines.push(line);
+            // End function on blank line (if not the start)
+            if (funcLines.length > 1 && !trimmed) {
+                inFunc = false;
+            }
+            continue;
+        }
+    }
+
+    return { vars, funcs: funcLines.join('\n').trim() };
+}
+
+/**
+ * Updates a variable's value directly in the raw Ink preamble string.
+ */
+export function updateVariableInInkLogic(
+    inkLogic: string,
+    varName: string,
+    newValue: string,
+): string {
+    // Match VAR/CONST declarations with optional trailing comment
+    const regex = new RegExp(
+        `^((?:VAR|CONST)\\s+${varName}\\s*=\\s*).+?(\\s*\\/\\/.*)?$`,
+        'm',
+    );
+    return inkLogic.replace(regex, `$1${newValue}$2`);
+}
+
+/**
+ * Adds a new variable declaration to the raw Ink preamble string.
+ * Inserts after the last existing VAR/CONST line.
+ */
+export function addVariableToInkLogic(
+    inkLogic: string,
+    varName: string,
+    type: VariableType = 'VAR',
+    value: string = '0',
+): string {
+    // Check for duplicates
+    if (new RegExp(`^(?:VAR|CONST)\\s+${varName}\\s*=`, 'm').test(inkLogic)) {
+        return inkLogic;
+    }
+
+    const newLine = `${type} ${varName} = ${value}`;
+    const lines = inkLogic.split('\n');
+
+    // Prepend to the very top (start of the adventure)
+    lines.unshift(newLine);
+
+    return lines.join('\n');
+}
+

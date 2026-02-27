@@ -48,6 +48,12 @@ export type DocumentAction =
               frontmatter: string;
           };
       }
+    | {
+          type: 'document/file/update-ink-logic';
+          payload: {
+              inkLogic: string;
+          };
+      }
     | PinnedNodesActions
     | MetaActions
     | SortChildNodesAction;

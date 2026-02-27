@@ -33,6 +33,7 @@ import { customIcons } from 'src/helpers/load-custom-icons';
 import { setViewType } from 'src/stores/settings/actions/set-view-type';
 import { getPersistedDocumentFormat } from 'src/obsidian/events/workspace/helpers/get-persisted-document-format';
 import { stringifyDocument } from 'src/view/helpers/stringify-document';
+import { injectInkBlock } from 'src/lib/ink-block/ink-block-utils';
 import { setDocumentFormat } from 'src/stores/settings/actions/set-document-format';
 import { toggleObsidianViewType } from 'src/obsidian/events/workspace/effects/toggle-obsidian-view-type';
 import { DocumentSearch } from 'src/stores/view/subscriptions/effects/document-search/document-search';
@@ -71,6 +72,7 @@ export class LineageView extends TextFileView {
     id: string;
     zoomFactor: number;
     minimapDom: MinimapDomElements | null = null;
+    story: any | null = null;
     private readonly onDestroyCallbacks: Set<Unsubscriber> = new Set();
     private activeFilePath: null | string;
     constructor(
@@ -189,9 +191,15 @@ export class LineageView extends TextFileView {
     saveDocument = async () => {
         invariant(this.file);
         const state = clone(this.documentStore.getValue());
-        const data: string =
-            state.file.frontmatter +
-            stringifyDocument(state.document, getPersistedDocumentFormat(this));
+        const format = getPersistedDocumentFormat(this);
+        const body = stringifyDocument(state.document, format, state.file.inkLogic);
+        let data: string;
+        if (format === 'ink') {
+            data = state.file.frontmatter +
+                injectInkBlock(state.file.inkPreamble, body, state.file.inkPostamble);
+        } else {
+            data = state.file.frontmatter + body;
+        }
         if (data !== this.data) {
             if (data.trim().length === 0) {
                 throw new Error(lang.error_save_empty_data);
@@ -257,7 +265,7 @@ export class LineageView extends TextFileView {
         const viewState = this.viewStore.getValue();
         const format = this.getDocumentFormat(body);
         const emptyStore = documentState.history.items.length === 0;
-        const existingBody = stringifyDocument(documentState.document, format);
+        const existingBody = stringifyDocument(documentState.document, format, documentState.file.inkLogic);
 
         const bodyHasChanged = existingBody !== body;
         const frontmatterHasChanged =

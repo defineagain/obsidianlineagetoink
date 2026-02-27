@@ -35,12 +35,11 @@ if [ -z "$GITHUB_TOKEN" ]; then
     echo "⚠️ Warning: GITHUB_TOKEN environment variable is not set. The gh cli might prompt for authentication."
 fi
 
-NOTES="### Premium Ink Player (v0.6.3)
-- **Compilation Fix**: Resolved the issue where global variables and logic caused \"red box\" errors.
-- **Inky-Style UI**: Implemented a vertical scrollback history for a better storytelling experience.
-- **Tag Engine**: Added support for \# image: tags to render story assets directly in the player.
-- **Smooth Navigation**: Added micro-animations for choices and content transitions.
-- **Improved Error Feedback**: Detailed error messages now appear instead of generic failures."
+NOTES='### Sidebar Live Sync Fix (v0.8.3)
+- **Regional Sync**: Fixed a critical bug where the Values tab in the sidebar was syncing with the main editor instead of the sidebar player.
+- **Context Awareness**: Components now properly prioritize the local story state for live variable updates.
+- **Live Sync Refresh**: Fixed an issue where the Values tab would freeze; added 500ms polling to track live `inkjs` updates.
+- **Build Quality**: Cleaned up standalone view state errors and accessibility warnings.'
 
 # Determine which files to include based on existence
 FILES="main.js manifest.json"
@@ -49,14 +48,26 @@ if [ -f styles.css ]; then
 fi
 
 # Determine title based on version
-if [[ "$VERSION" == "0.6.3" ]]; then
+if [[ "$VERSION" == "0.8.3" ]]; then
+    TITLE="v0.8.3 - Sidebar Sync Fix"
+elif [[ "$VERSION" == "0.8.2" ]]; then
+    TITLE="v0.8.2 - Variable Consolidation"
+elif [[ "$VERSION" == "0.8.1" ]]; then
+    TITLE="v0.8.1 - Variable Polish"
+elif [[ "$VERSION" == "0.8.0" ]]; then
+    TITLE="v0.6.6 - Stability Restoration"
+elif [[ "$VERSION" == "0.6.5" ]]; then
+    TITLE="v0.6.5 - Deep Debug Diagnostics"
+elif [[ "$VERSION" == "0.6.4" ]]; then
+    TITLE="v0.6.4 - Ink Modular Support"
+elif [[ "$VERSION" == "0.6.3" ]]; then
     TITLE="v0.6.3 - Premium Ink Player"
 elif [[ "$VERSION" == "0.6.2" ]]; then
     TITLE="v0.6.2 - Unified Ink Sidebar"
 elif [[ "$VERSION" == "0.6.1" ]]; then
     TITLE="v0.6.1 - Ink Import/Export Fidelity"
 else
-    TITLE="$VERSION - Unified Variable Registry"
+    TITLE="$VERSION - Release"
 fi
 
 gh release create "$VERSION" $FILES \

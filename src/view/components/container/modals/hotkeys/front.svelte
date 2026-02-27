@@ -14,6 +14,7 @@
         });
     }
 </script>
+
 <div class="front">
     <div class="search-input-container">
         <input
@@ -27,12 +28,21 @@
         <div
             aria-label={lang.tlb_search_clear}
             class="search-input-clear-button"
+            role="button"
+            tabindex="0"
             on:click={() => {
+                searchTerm = '';
+            }}
+            on:keydown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
                     searchTerm = '';
-                }}
+                    e.preventDefault();
+                }
+            }}
         ></div>
     </div>
 </div>
+
 <style>
     .front {
         display: flex;

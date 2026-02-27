@@ -91,7 +91,6 @@
     {:else if $activeTab === 'ink-tools'}
         <InkTools />
     {/if}
-
 </div>
 
 <style>
@@ -100,7 +99,7 @@
         flex: 0 0 auto;
         width: var(--animated-sidebar-width);
         position: relative;
-        overflow: hidden;
+        overflow: hidden auto;
         background-color: rgba(0, 0, 0, 0.2);
         background-blend-mode: multiply;
         display: flex;

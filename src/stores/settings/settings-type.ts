@@ -21,7 +21,7 @@ export type ScrollingSettings = {
     centerActiveNodeV: boolean;
 };
 
-export type LineageDocumentFormat = 'outline' | 'sections' | 'html-element';
+export type LineageDocumentFormat = 'outline' | 'sections' | 'html-element' | 'ink';
 
 export type ViewType = 'lineage-to-ink' | 'markdown';
 export type DocumentPreferences = {

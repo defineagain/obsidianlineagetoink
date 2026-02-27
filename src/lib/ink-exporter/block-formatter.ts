@@ -37,8 +37,26 @@ export function reformatBlock(content: string, targetType: BlockType): string {
             continue;
         }
 
-        // Knot Header: === name ===
+        // Knot Header: === name === (with trailing)
         if (/^===\s*[^=]*?\s*===\s*$/.test(line)) {
+            lines.shift();
+            continue;
+        }
+
+        // Knot Header: === name (without trailing ===)
+        if (/^===\s+\S/.test(line)) {
+            lines.shift();
+            continue;
+        }
+
+        // Markdown-style Knot Header: # name
+        if (/^#\s+/.test(line) && !/^##/.test(line)) {
+            lines.shift();
+            continue;
+        }
+
+        // Markdown-style Stitch Header: ## name
+        if (/^##\s+/.test(line)) {
             lines.shift();
             continue;
         }

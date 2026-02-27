@@ -3,10 +3,12 @@ import { hasNHtmlCommentMarker } from 'src/lib/format-detection/has-n-html-comme
 import { isOutline } from 'src/lib/format-detection/is-outline';
 import { hasNBulletListItems } from 'src/lib/format-detection/has-n-bullet-list-items';
 import { hasNHtmlElementMarker } from 'src/lib/format-detection/has-n-html-element-markers';
+import { isInkDocument } from 'src/lib/ink-block/ink-block-utils';
 
 export const detectDocumentFormat = (text: string, strict = true) => {
     const { body } = extractFrontmatter(text);
 
+    if (isInkDocument(body)) return 'ink';
     if (hasNHtmlCommentMarker(body, 1)) return 'sections';
     if (hasNHtmlElementMarker(body, 1)) return 'html-element';
     if (isOutline(body)) return 'outline';

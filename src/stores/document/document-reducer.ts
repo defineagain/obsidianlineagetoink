@@ -134,6 +134,9 @@ const updateDocumentState = (
     } else if (action.type === 'document/file/update-frontmatter') {
         state.file.frontmatter = action.payload.frontmatter;
         return;
+    } else if (action.type === 'document/file/update-ink-logic') {
+        state.file.inkLogic = action.payload.inkLogic;
+        return;
     } else if (action.type === 'document/pinned-nodes/pin') {
         pinNode(state.sections, state.pinnedNodes, action.payload.id);
         return;

@@ -1,6 +1,7 @@
 
 import { onPluginError } from 'src/lib/store/on-plugin-error';
 import { extractFrontmatter } from 'src/view/helpers/extract-frontmatter';
+import { extractInkBlock } from 'src/lib/ink-block/ink-block-utils';
 import { htmlCommentToJson } from 'src/lib/data-conversion/x-to-json/html-comment-to-json';
 import { astToInk } from 'src/lib/ink-exporter/ast-parser';
 import { LineageView } from 'src/view/view';
@@ -23,16 +24,25 @@ export const exportToInk = async (view: LineageView) => {
         }
 
         const fileData = await view.plugin.app.vault.read(file);
-        const { body, frontmatter } = extractFrontmatter(fileData);
-        const tree = htmlCommentToJson(body);
-        
-        // Extract story-logic from frontmatter
-        const logicMatch = frontmatter.match(/story-logic: \|([\s\S]+?)(?=\n[a-z0-9_-]+:|\n---|\s*$)/);
-        const logic = logicMatch ? logicMatch[1].split('\n').map((line: string) => line.replace(/^  /, '')).join('\n').trim() : "";
+        let inkSource: string;
 
-        let inkSource = astToInk(tree);
-        if (logic) {
-            inkSource = `${logic}\n\n${inkSource}`;
+        // Try Ink-native extraction first
+        const block = extractInkBlock(fileData);
+        if (block) {
+            // Direct extraction — no conversion needed
+            inkSource = block.inkSource;
+        } else {
+            // Legacy fallback: HTML-comment format
+            const { body, frontmatter } = extractFrontmatter(fileData);
+            const tree = htmlCommentToJson(body);
+            
+            const logicMatch = frontmatter.match(/story-logic: \|([\s\S]+?)(?=\n[a-z0-9_-]+:|\n---|\s*$)/);
+            const logic = logicMatch ? logicMatch[1].split('\n').map((line: string) => line.replace(/^  /, '')).join('\n').trim() : "";
+
+            inkSource = astToInk(tree);
+            if (logic) {
+                inkSource = `${logic}\n\n${inkSource}`;
+            }
         }
 
         // Download to disk via browser API
